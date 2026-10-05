@@ -80,3 +80,13 @@ class Job(Base):
     user: Mapped["User"] = relationship(
         back_populates="jobs"
     )
+
+    applications: Mapped[list["Application"]] = relationship(
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+
+    skills: Mapped[list["Skill"]] = relationship(
+        secondary="job_skills",
+        back_populates="jobs",
+    )

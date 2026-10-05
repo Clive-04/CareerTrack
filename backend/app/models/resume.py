@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -61,4 +61,17 @@ class Resume(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    user: Mapped["User"] = relationship(
+        back_populates="resumes",
+    )
+
+    applications: Mapped[list["Application"]] = relationship(
+        back_populates="resume",
+    )
+
+    skills: Mapped[list["Skill"]] = relationship(
+        secondary="resume_skills",
+        back_populates="resumes",
     )

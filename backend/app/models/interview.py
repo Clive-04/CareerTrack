@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -66,4 +66,8 @@ class Interview(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    application: Mapped["Application"] = relationship(
+        back_populates="interviews",
     )

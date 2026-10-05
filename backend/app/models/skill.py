@@ -2,7 +2,7 @@ import uuid
 
 from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -21,4 +21,14 @@ class Skill(Base):
         unique=True,
         nullable=False,
         index=True,
+    )
+
+    resumes: Mapped[list["Resume"]] = relationship(
+        secondary="resume_skills",
+        back_populates="skills",
+    )
+
+    jobs: Mapped[list["Job"]] = relationship(
+        secondary="job_skills",
+        back_populates="skills",
     )

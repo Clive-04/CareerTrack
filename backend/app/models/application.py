@@ -4,7 +4,7 @@ from enum import Enum
 
 from sqlalchemy import Date, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -77,4 +77,21 @@ class Application(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    user: Mapped["User"] = relationship(
+        back_populates="applications",
+    )
+
+    job: Mapped["Job"] = relationship(
+        back_populates="applications",
+    )
+
+    resume: Mapped["Resume | None"] = relationship(
+        back_populates="applications",
+    )
+
+    interviews: Mapped[list["Interview"]] = relationship(
+        back_populates="application",
+        cascade="all, delete-orphan",
     )
