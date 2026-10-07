@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
@@ -50,3 +51,32 @@ def create_job(
         salary_min=new_job.salary_min,
         salary_max=new_job.salary_max,
     )
+
+@router.get(
+    "",
+    response_model=list[JobResponse],
+)
+def get_jobs(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    jobs = db.scalars(
+        select(Job)
+        .where(Job.user_id == current_user.id)
+        .order_by(Job.created_at.desc())
+    ).all()
+
+    return [
+        JobResponse(
+            id=str(job.id),
+            company=job.company,
+            position=job.position,
+            location=job.location,
+            employment_type=job.employment_type,
+            job_url=job.job_url,
+            description=job.description,
+            salary_min=job.salary_min,
+            salary_max=job.salary_max,
+        )
+        for job in jobs
+    ]
