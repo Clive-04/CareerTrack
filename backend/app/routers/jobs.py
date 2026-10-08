@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_user
 from app.db.session import get_db
 from app.models import Job, User
-from app.schemas.job import JobCreate, JobResponse
+from app.schemas.job import JobCreate, JobResponse, JobUpdate
 
 
 router = APIRouter(
@@ -102,6 +102,49 @@ def get_job(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job not found",
         )
+
+    return JobResponse(
+        id=str(job.id),
+        company=job.company,
+        position=job.position,
+        location=job.location,
+        employment_type=job.employment_type,
+        job_url=job.job_url,
+        description=job.description,
+        salary_min=job.salary_min,
+        salary_max=job.salary_max,
+    )
+
+@router.patch(
+    "/{job_id}",
+    response_model=JobResponse,
+)
+def update_job(
+    job_id: str,
+    job_data: JobUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    job = db.scalar(
+        select(Job).where(
+            Job.id == job_id,
+            Job.user_id == current_user.id,
+        )
+    )
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found",
+        )
+
+    update_data = job_data.model_dump(exclude_unset=True)
+
+    for field, value in update_data.items():
+        setattr(job, field, value)
+
+    db.commit()
+    db.refresh(job)
 
     return JobResponse(
         id=str(job.id),
