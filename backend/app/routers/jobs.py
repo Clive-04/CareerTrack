@@ -157,3 +157,28 @@ def update_job(
         salary_min=job.salary_min,
         salary_max=job.salary_max,
     )
+
+@router.delete(
+    "/{job_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_job(
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    job = db.scalar(
+        select(Job).where(
+            Job.id == job_id,
+            Job.user_id == current_user.id,
+        )
+    )
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found",
+        )
+
+    db.delete(job)
+    db.commit()
