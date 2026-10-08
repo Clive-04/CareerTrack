@@ -1,5 +1,10 @@
 from app.schemas.auth import UserLogin, UserRegister, UserResponse
 from app.schemas.job import JobCreate, JobResponse, JobUpdate
+from app.schemas.application import (
+    ApplicationCreate,
+    ApplicationResponse,
+    ApplicationUpdate
+)
 
 
 __all__ = [
@@ -9,4 +14,7 @@ __all__ = [
     "JobCreate",
     "JobUpdate",
     "JobResponse",
+    "ApplicationCreate",
+    "ApplicationUpdate",
+    "ApplicationResponse",
 ]
