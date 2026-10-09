@@ -5,6 +5,11 @@ from app.schemas.application import (
     ApplicationResponse,
     ApplicationUpdate
 )
+from app.schemas.interview import (
+    InterviewCreate,
+    InterviewResponse,
+    InterviewUpdate
+)
 
 
 __all__ = [
@@ -17,4 +22,7 @@ __all__ = [
     "ApplicationCreate",
     "ApplicationUpdate",
     "ApplicationResponse",
+    "InterviewCreate",
+    "InterviewResponse",
+    "InterviewUpdate",
 ]

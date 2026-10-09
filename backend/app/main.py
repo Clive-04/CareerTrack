@@ -5,6 +5,7 @@ from app.db.session import engine
 from app.routers.auth import router as auth_router
 from app.routers.jobs import router as jobs_router
 from app.routers.applications import router as applications_router
+from app.routers.interviews import router as interviews_router
 
 
 app = FastAPI(
@@ -16,6 +17,7 @@ app = FastAPI(
 app.include_router(auth_router)
 app.include_router(jobs_router)
 app.include_router(applications_router)
+app.include_router(interviews_router)
 
 @app.get("/health")
 def health_check():
