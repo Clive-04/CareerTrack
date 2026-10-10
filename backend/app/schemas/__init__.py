@@ -3,12 +3,17 @@ from app.schemas.job import JobCreate, JobResponse, JobUpdate
 from app.schemas.application import (
     ApplicationCreate,
     ApplicationResponse,
-    ApplicationUpdate
+    ApplicationUpdate,
 )
 from app.schemas.interview import (
     InterviewCreate,
     InterviewResponse,
-    InterviewUpdate
+    InterviewUpdate,
+)
+from app.schemas.resume import (
+    ResumeCreate,
+    ResumeResponse,
+    ResumeUpdate,
 )
 
 
@@ -25,4 +30,7 @@ __all__ = [
     "InterviewCreate",
     "InterviewResponse",
     "InterviewUpdate",
+    "ResumeCreate",
+    "ResumeResponse",
+    "ResumeUpdate",
 ]
