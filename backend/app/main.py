@@ -7,6 +7,7 @@ from app.routers.jobs import router as jobs_router
 from app.routers.applications import router as applications_router
 from app.routers.interviews import router as interviews_router
 from app.routers.resume import router as resumes_router
+from app.routers.skill import router as skills_router
 
 
 app = FastAPI(
@@ -20,6 +21,7 @@ app.include_router(jobs_router)
 app.include_router(applications_router)
 app.include_router(interviews_router)
 app.include_router(resumes_router)
+app.include_router(skills_router)
 
 @app.get("/health")
 def health_check():

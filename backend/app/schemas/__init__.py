@@ -15,6 +15,11 @@ from app.schemas.resume import (
     ResumeResponse,
     ResumeUpdate,
 )
+from app.schemas.skill import (
+    SkillCreate,
+    SkillResponse,
+    SkillUpdate,
+)
 
 
 __all__ = [
@@ -33,4 +38,7 @@ __all__ = [
     "ResumeCreate",
     "ResumeResponse",
     "ResumeUpdate",
+    "SkillCreate",
+    "SkillUpdate",
+    "SkillResponse",
 ]
