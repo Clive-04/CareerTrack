@@ -20,6 +20,7 @@ from app.schemas.skill import (
     SkillResponse,
     SkillUpdate,
 )
+from app.schemas.dashboard import DashboardSummary
 
 
 __all__ = [
@@ -41,4 +42,5 @@ __all__ = [
     "SkillCreate",
     "SkillUpdate",
     "SkillResponse",
+    "DashboardSummary",
 ]
