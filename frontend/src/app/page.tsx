@@ -1,19 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import PageHeader from "@/components/PageHeader";
+import WorkspaceLayout from "@/components/WorkspaceLayout";
 import {
-  LayoutDashboard,
   BriefcaseBusiness,
   FileText,
   CalendarDays,
   GraduationCap,
   UserRound,
-  Settings,
   Bell,
   Search,
   Plus,
-  Menu,
-  X,
   TrendingUp,
   Clock3,
   CircleCheck,
@@ -21,15 +20,6 @@ import {
   MapPin,
   MoreHorizontal,
 } from "lucide-react";
-
-const navigation = [
-  { label: "Dashboard", icon: LayoutDashboard },
-  { label: "Jobs", icon: BriefcaseBusiness },
-  { label: "Applications", icon: FileText },
-  { label: "Interviews", icon: CalendarDays },
-  { label: "Resumes", icon: FileText },
-  { label: "Skills", icon: GraduationCap },
-];
 
 const applications = [
   {
@@ -78,9 +68,17 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [activePage, setActivePage] = useState("Dashboard");
   const [search, setSearch] = useState("");
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const activePage =
+    pathname === "/"
+      ? "Dashboard"
+      : pathname
+          .split("/")
+          .filter(Boolean)[0]
+          .replace(/^./, (letter) => letter.toUpperCase());
 
   const filteredApplications = applications.filter((application) =>
     `${application.company} ${application.position} ${application.status}`
@@ -89,342 +87,213 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F5F7FB] text-slate-800">
-      {menuOpen && (
-        <button
-          aria-label="Close menu overlay"
-          onClick={() => setMenuOpen(false)}
-          className="fixed inset-0 z-40 bg-slate-950/40 md:hidden"
-        />
-      )}
-
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-[#172B4D] text-white transition-transform duration-200 ${
-          menuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        }`}
-      >
-        <div className="flex h-20 items-center justify-between border-b border-white/10 px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500">
-              <BriefcaseBusiness size={22} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">CareerTrack</h1>
-              <p className="text-xs text-slate-300">Your career companion</p>
-            </div>
-          </div>
-          <button
-            aria-label="Close navigation"
-            onClick={() => setMenuOpen(false)}
-            className="rounded-lg p-2 hover:bg-white/10 md:hidden"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="px-4 pt-8">
-          <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
-            Workspace
-          </p>
-          <nav className="space-y-1">
-            {navigation.map(({ label, icon: Icon }) => (
-              <button
-                key={label}
-                onClick={() => {
-                  setActivePage(label);
-                  setMenuOpen(false);
-                }}
-                className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
-                  activePage === label
-                    ? "bg-blue-500 text-white shadow-lg shadow-blue-950/20"
-                    : "text-slate-300 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <Icon size={19} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className="mt-auto p-4">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-blue-400/20 text-blue-200">
-              <TrendingUp size={19} />
-            </div>
-            <p className="text-sm font-semibold">Keep moving forward</p>
-            <p className="mt-1 text-xs leading-5 text-slate-300">
-              Every application brings you closer to your next opportunity.
-            </p>
-          </div>
-          <button
-            onClick={() => setActivePage("Settings")}
-            className="mt-4 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-300 hover:bg-white/10 hover:text-white"
-          >
-            <Settings size={19} />
-            Settings
-          </button>
-          <div className="mt-2 flex items-center gap-3 border-t border-white/10 px-2 pt-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-800">
-              CB
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">CareerTrack User</p>
-              <p className="text-xs text-slate-400">Job seeker</p>
-            </div>
-            <ChevronDown size={16} className="text-slate-400" />
-          </div>
-        </div>
-      </aside>
-
-      <main className="min-h-screen md:ml-64">
-        <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-8">
-          <div className="flex items-center gap-3">
-            <button
-              aria-label="Open navigation"
-              onClick={() => setMenuOpen(true)}
-              className="rounded-lg p-2 hover:bg-slate-100 md:hidden"
-            >
-              <Menu size={22} />
-            </button>
-            <div>
-              <p className="text-sm text-slate-500">Workspace / {activePage}</p>
-              <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
-                {activePage}
-              </h2>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <button
-              aria-label="Notifications"
-              className="relative rounded-xl border border-slate-200 p-2.5 text-slate-600 hover:bg-slate-50"
-            >
-              <Bell size={19} />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500 ring-2 ring-white" />
-            </button>
-            <div className="hidden items-center gap-2 border-l border-slate-200 pl-4 sm:flex">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
-                CB
-              </div>
-              <span className="text-sm font-medium">My Account</span>
-              <ChevronDown size={16} className="text-slate-400" />
-            </div>
-          </div>
-        </header>
-
-        <div className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
-          <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <p className="text-sm font-medium text-blue-600">
-                Friday, October 9, 2026
-              </p>
-              <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                Welcome back!
-              </h2>
-              <p className="mt-2 text-sm text-slate-500 sm:text-base">
-                Here&apos;s an overview of your job search progress.
-              </p>
-            </div>
-            <button
-              onClick={() => setActivePage("Jobs")}
-              className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:self-auto"
-            >
-              <Plus size={18} />
-              Add a job
-            </button>
-          </section>
-
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard
-              title="Total Applications"
-              value="12"
-              note="Applications tracked"
-              icon={FileText}
-              iconStyle="bg-blue-50 text-blue-600"
+    <WorkspaceLayout>
+      <div className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
+            <PageHeader
+              eyebrow="Friday, October 9, 2026"
+              title="Welcome back!"
+              description="Here's an overview of your job search progress."
+              action={
+                <button
+                  onClick={() => router.push("/jobs")}
+                  className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:self-auto"
+                >
+                  <Plus size={18} />
+                  Add a job
+                </button>
+              }
             />
-            <SummaryCard
-              title="Interviews"
-              value="3"
-              note="Keep preparing"
-              icon={CalendarDays}
-              iconStyle="bg-purple-50 text-purple-600"
-            />
-            <SummaryCard
-              title="Jobs Saved"
-              value="18"
-              note="Opportunities collected"
-              icon={BriefcaseBusiness}
-              iconStyle="bg-amber-50 text-amber-600"
-            />
-            <SummaryCard
-              title="Offers Received"
-              value="1"
-              note="A step toward your goal"
-              icon={CircleCheck}
-              iconStyle="bg-green-50 text-green-600"
-            />
-          </section>
 
-          <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 xl:col-span-2">
-              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Recent Applications
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Keep track of your latest opportunities.
-                  </p>
-                </div>
-                <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
-                  <Search size={17} className="text-slate-400" />
-                  <input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search applications"
-                    className="w-full min-w-0 bg-transparent text-sm outline-none sm:w-40"
-                  />
-                </label>
-              </div>
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <SummaryCard
+                title="Total Applications"
+                value="12"
+                note="Applications tracked"
+                icon={FileText}
+                iconStyle="bg-blue-50 text-blue-600"
+              />
+              <SummaryCard
+                title="Interviews"
+                value="3"
+                note="Keep preparing"
+                icon={CalendarDays}
+                iconStyle="bg-purple-50 text-purple-600"
+              />
+              <SummaryCard
+                title="Jobs Saved"
+                value="18"
+                note="Opportunities collected"
+                icon={BriefcaseBusiness}
+                iconStyle="bg-amber-50 text-amber-600"
+              />
+              <SummaryCard
+                title="Offers Received"
+                value="1"
+                note="A step toward your goal"
+                icon={CircleCheck}
+                iconStyle="bg-green-50 text-green-600"
+              />
+            </section>
 
-              <div className="mt-6 overflow-x-auto">
-                <table className="w-full min-w-[600px] text-left">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
-                      <th className="pb-3 pr-4 font-semibold">Company / Role</th>
-                      <th className="pb-3 pr-4 font-semibold">Date Applied</th>
-                      <th className="pb-3 pr-4 font-semibold">Status</th>
-                      <th className="pb-3 font-semibold">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredApplications.map((application) => (
-                      <tr
-                        key={application.company}
-                        className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70"
-                      >
-                        <td className="py-4 pr-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${application.color}`}
-                            >
-                              {application.initials}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-slate-800">
-                                {application.company}
-                              </p>
-                              <p className="mt-1 text-xs text-slate-500">
-                                {application.position}
-                              </p>
-                              <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
-                                <MapPin size={12} />
-                                {application.location}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 pr-4 text-sm text-slate-500">
-                          {application.date}
-                        </td>
-                        <td className="py-4 pr-4">
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[application.status]}`}
-                          >
-                            {application.status}
-                          </span>
-                        </td>
-                        <td className="py-4">
-                          <button
-                            aria-label={`More options for ${application.company}`}
-                            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                          >
-                            <MoreHorizontal size={19} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredApplications.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={4}
-                          className="py-10 text-center text-sm text-slate-500"
-                        >
-                          No applications match your search.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <button
-                onClick={() => setActivePage("Applications")}
-                className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700"
-              >
-                View all applications →
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-                <div className="flex items-center justify-between">
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 xl:col-span-2">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <h3 className="text-lg font-bold text-slate-900">
-                      Upcoming Interviews
+                      Recent Applications
                     </h3>
                     <p className="mt-1 text-sm text-slate-500">
-                      Stay ready for your next step.
+                      Keep track of your latest opportunities.
                     </p>
                   </div>
-                  <div className="rounded-xl bg-purple-50 p-3 text-purple-600">
-                    <Clock3 size={20} />
-                  </div>
+                  <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
+                    <Search size={17} className="text-slate-400" />
+                    <input
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Search applications"
+                      className="w-full min-w-0 bg-transparent text-sm outline-none sm:w-40"
+                    />
+                  </label>
                 </div>
-                <div className="mt-6 rounded-xl border border-dashed border-slate-200 px-4 py-7 text-center">
-                  <CalendarDays
-                    size={28}
-                    className="mx-auto text-slate-300"
-                  />
-                  <p className="mt-3 text-sm font-semibold text-slate-700">
-                    No upcoming interviews
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Your scheduled interviews will appear here.
-                  </p>
+
+                <div className="mt-6 overflow-x-auto">
+                  <table className="w-full min-w-[600px] text-left">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
+                        <th className="pb-3 pr-4 font-semibold">Company / Role</th>
+                        <th className="pb-3 pr-4 font-semibold">Date Applied</th>
+                        <th className="pb-3 pr-4 font-semibold">Status</th>
+                        <th className="pb-3 font-semibold">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredApplications.map((application) => (
+                        <tr
+                          key={application.company}
+                          className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70"
+                        >
+                          <td className="py-4 pr-4">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${application.color}`}
+                              >
+                                {application.initials}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-slate-800">
+                                  {application.company}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {application.position}
+                                </p>
+                                <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                                  <MapPin size={12} />
+                                  {application.location}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 pr-4 text-sm text-slate-500">
+                            {application.date}
+                          </td>
+                          <td className="py-4 pr-4">
+                            <span
+                              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[application.status]}`}
+                            >
+                              {application.status}
+                            </span>
+                          </td>
+                          <td className="py-4">
+                            <button
+                              aria-label={`More options for ${application.company}`}
+                              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            >
+                              <MoreHorizontal size={19} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredApplications.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="py-10 text-center text-sm text-slate-500"
+                          >
+                            No applications match your search.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
+
                 <button
-                  onClick={() => setActivePage("Interviews")}
+                  onClick={() => router.push("/applications")}
                   className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700"
                 >
-                  Manage interviews →
+                  View all applications →
                 </button>
               </div>
 
-              <div className="rounded-2xl bg-gradient-to-br from-[#172B4D] to-[#264B80] p-6 text-white">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
-                  <GraduationCap size={23} />
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">
+                        Upcoming Interviews
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Stay ready for your next step.
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-purple-50 p-3 text-purple-600">
+                      <Clock3 size={20} />
+                    </div>
+                  </div>
+                  <div className="mt-6 rounded-xl border border-dashed border-slate-200 px-4 py-7 text-center">
+                    <CalendarDays
+                      size={28}
+                      className="mx-auto text-slate-300"
+                    />
+                    <p className="mt-3 text-sm font-semibold text-slate-700">
+                      No upcoming interviews
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Your scheduled interviews will appear here.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => router.push("/interviews")}
+                    className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                  >
+                    Manage interviews →
+                  </button>
                 </div>
-                <h3 className="mt-4 text-lg font-bold">Ready for your next step?</h3>
-                <p className="mt-2 text-sm leading-6 text-blue-100">
-                  Keep your resume updated and highlight the skills that match your target roles.
-                </p>
-                <button
-                  onClick={() => setActivePage("Resumes")}
-                  className="mt-5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#172B4D] transition hover:bg-blue-50"
-                >
-                  Review my resumes
-                </button>
-              </div>
-            </div>
-          </section>
 
-          <footer className="border-t border-slate-200 py-5 text-center text-xs text-slate-400">
-            CareerTrack · Stay organized. Move forward.
-          </footer>
-        </div>
-      </main>
-    </div>
+                <div className="rounded-2xl bg-gradient-to-br from-[#172B4D] to-[#264B80] p-6 text-white">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
+                    <GraduationCap size={23} />
+                  </div>
+                  <h3 className="mt-4 text-lg font-bold">Ready for your next step?</h3>
+                  <p className="mt-2 text-sm leading-6 text-blue-100">
+                    Keep your resume updated and highlight the skills that match your target roles.
+                  </p>
+                  <button
+                    onClick={() => router.push("/resumes")}
+                    className="mt-5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#172B4D] transition hover:bg-blue-50"
+                  >
+                    Review my resumes
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <footer className="border-t border-slate-200 py-5 text-center text-xs text-slate-400">
+              CareerTrack · Stay organized. Move forward.
+            </footer>
+          </div>
+    </WorkspaceLayout>
   );
 }
 

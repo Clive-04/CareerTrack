@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState } from "react";
@@ -12,9 +11,10 @@ import {
   X,
   CheckCircle2,
   CalendarCheck,
-  BriefcaseBusiness,
-  MoreHorizontal,
+  Trash2,
 } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
+import WorkspaceLayout from "@/components/WorkspaceLayout";
 
 type InterviewStatus = "Scheduled" | "Completed" | "Cancelled";
 type InterviewType = "Video" | "Phone" | "On-site";
@@ -81,7 +81,7 @@ const emptyForm = {
 function formatDate(date: string) {
   if (!date) return "Not set";
 
-  return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -102,7 +102,8 @@ function formatTime(time: string) {
 }
 
 export default function InterviewsPage() {
-  const [interviews, setInterviews] = useState<Interview[]>(initialInterviews);
+  const [interviews, setInterviews] =
+    useState<Interview[]>(initialInterviews);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
@@ -113,15 +114,15 @@ export default function InterviewsPage() {
 
   const upcomingCount = interviews.filter(
     (interview) =>
-      interview.status === "Scheduled" && interview.date >= today
+      interview.status === "Scheduled" && interview.date >= today,
   ).length;
 
   const completedCount = interviews.filter(
-    (interview) => interview.status === "Completed"
+    (interview) => interview.status === "Completed",
   ).length;
 
   const scheduledCount = interviews.filter(
-    (interview) => interview.status === "Scheduled"
+    (interview) => interview.status === "Scheduled",
   ).length;
 
   const filteredInterviews = useMemo(() => {
@@ -137,7 +138,7 @@ export default function InterviewsPage() {
         return matchesSearch && matchesStatus;
       })
       .sort((a, b) =>
-        `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)
+        `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`),
       );
   }, [interviews, search, statusFilter]);
 
@@ -170,8 +171,8 @@ export default function InterviewsPage() {
         current.map((interview) =>
           interview.id === editingId
             ? { ...interview, ...form }
-            : interview
-        )
+            : interview,
+        ),
       );
     } else {
       const newInterview: Interview = {
@@ -190,15 +191,15 @@ export default function InterviewsPage() {
   function updateStatus(id: number, status: InterviewStatus) {
     setInterviews((current) =>
       current.map((interview) =>
-        interview.id === id ? { ...interview, status } : interview
-      )
+        interview.id === id ? { ...interview, status } : interview,
+      ),
     );
   }
 
   function deleteInterview(id: number) {
     if (window.confirm("Are you sure you want to delete this interview?")) {
       setInterviews((current) =>
-        current.filter((interview) => interview.id !== id)
+        current.filter((interview) => interview.id !== id),
       );
     }
   }
@@ -207,307 +208,249 @@ export default function InterviewsPage() {
     "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
 
   return (
-    <div className="min-h-screen bg-[#F5F7FB] text-gray-800">
-      <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col bg-[#172B4D] text-white lg:flex">
-        <div className="flex h-20 items-center gap-3 border-b border-white/10 px-7">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500">
-            <BriefcaseBusiness size={22} />
-          </div>
-          <span className="text-xl font-bold tracking-tight">
-            CareerTrack
-          </span>
-        </div>
+    <WorkspaceLayout>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
+        <PageHeader
+          eyebrow="Your schedule"
+          title="Interviews"
+          description="Keep track of your upcoming interviews and interview history."
+          action={
+            <button
+              type="button"
+              onClick={openAddModal}
+              className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              <Plus size={18} />
+              Add Interview
+            </button>
+          }
+        />
 
-        <div className="px-4 py-6">
-          <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-blue-200/60">
-            Workspace
-          </p>
-
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { name: "Dashboard", href: "/", icon: CalendarDays },
-            { name: "Jobs", href: "/jobs", icon: BriefcaseBusiness },
-            { name: "Applications", href: "/applications", icon: CheckCircle2 },
-            { name: "Interviews", href: "/interviews", icon: CalendarCheck },
-            { name: "Resumes", href: "/resumes", icon: BriefcaseBusiness },
-            { name: "Skills", href: "/skills", icon: CheckCircle2 },
-          ].map((item) => {
-            const Icon = item.icon;
-            const active = item.name === "Interviews";
+            {
+              label: "Total Interviews",
+              value: interviews.length,
+              icon: CalendarDays,
+              color: "bg-blue-50 text-blue-600",
+            },
+            {
+              label: "Upcoming",
+              value: upcomingCount,
+              icon: Clock,
+              color: "bg-amber-50 text-amber-600",
+            },
+            {
+              label: "Completed",
+              value: completedCount,
+              icon: CheckCircle2,
+              color: "bg-green-50 text-green-600",
+            },
+            {
+              label: "Scheduled",
+              value: scheduledCount,
+              icon: CalendarCheck,
+              color: "bg-purple-50 text-purple-600",
+            },
+          ].map((card) => {
+            const Icon = card.icon;
 
             return (
-              <a
-                key={item.name}
-                href={item.href}
-                className={`mb-1 flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition ${
-                  active
-                    ? "bg-blue-500 text-white"
-                    : "text-blue-100/80 hover:bg-white/10 hover:text-white"
-                }`}
+              <div
+                key={card.label}
+                className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
               >
-                <Icon size={19} />
-                {item.name}
-              </a>
-            );
-          })}
-        </div>
-
-        <div className="mt-auto border-t border-white/10 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-400 font-semibold">
-              CB
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Clive Benito</p>
-              <p className="text-xs text-blue-200/70">Job Seeker</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <main className="lg:ml-64">
-        <header className="flex flex-col gap-4 border-b border-gray-200 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <div>
-            <p className="text-sm text-gray-500">Workspace / Interviews</p>
-            <h1 className="mt-1 text-2xl font-bold text-gray-900">
-              Interviews
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Keep track of your upcoming interviews and interview history.
-            </p>
-          </div>
-
-          <button
-            onClick={openAddModal}
-            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-          >
-            <Plus size={18} />
-            Add Interview
-          </button>
-        </header>
-
-        <div className="space-y-6 p-5 sm:p-8">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              {
-                label: "Total Interviews",
-                value: interviews.length,
-                icon: CalendarDays,
-                color: "bg-blue-50 text-blue-600",
-              },
-              {
-                label: "Upcoming",
-                value: upcomingCount,
-                icon: Clock,
-                color: "bg-amber-50 text-amber-600",
-              },
-              {
-                label: "Completed",
-                value: completedCount,
-                icon: CheckCircle2,
-                color: "bg-green-50 text-green-600",
-              },
-              {
-                label: "Scheduled",
-                value: scheduledCount,
-                icon: CalendarCheck,
-                color: "bg-purple-50 text-purple-600",
-              },
-            ].map((card) => {
-              const Icon = card.icon;
-
-              return (
-                <div
-                  key={card.label}
-                  className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-500">{card.label}</p>
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg ${card.color}`}
-                    >
-                      <Icon size={20} />
-                    </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-500">{card.label}</p>
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg ${card.color}`}
+                  >
+                    <Icon size={20} />
                   </div>
-                  <p className="mt-4 text-3xl font-bold text-gray-900">
-                    {card.value}
-                  </p>
                 </div>
-              );
-            })}
-          </div>
-
-          <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-            <div className="flex flex-col gap-4 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="font-semibold text-gray-900">
-                  Interview Schedule
-                </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Manage dates, details, and interview status.
+                <p className="mt-4 text-3xl font-bold text-gray-900">
+                  {card.value}
                 </p>
               </div>
+            );
+          })}
+        </section>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <div className="relative">
-                  <Search
-                    size={17}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search interviews..."
-                    className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500 sm:w-56"
-                  />
-                </div>
-
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500"
-                >
-                  <option value="All">All statuses</option>
-                  <option value="Scheduled">Scheduled</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-              </div>
+        <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="flex flex-col gap-4 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold text-gray-900">
+                Interview Schedule
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Manage dates, details, and interview status.
+              </p>
             </div>
 
-            <div className="divide-y divide-gray-100">
-              {filteredInterviews.length === 0 ? (
-                <div className="p-12 text-center">
-                  <CalendarDays
-                    size={36}
-                    className="mx-auto text-gray-300"
-                  />
-                  <p className="mt-3 font-medium text-gray-700">
-                    No interviews found
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Try another search or add a new interview.
-                  </p>
-                </div>
-              ) : (
-                filteredInterviews.map((interview) => (
-                  <div
-                    key={interview.id}
-                    className="flex flex-col gap-4 p-5 transition hover:bg-gray-50/70 xl:flex-row xl:items-center xl:justify-between"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                        {interview.type === "Video" ? (
-                          <Video size={22} />
-                        ) : interview.type === "Phone" ? (
-                          <Clock size={22} />
-                        ) : (
-                          <MapPin size={22} />
-                        )}
-                      </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="relative">
+                <Search
+                  size={17}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search interviews..."
+                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500 sm:w-56"
+                />
+              </div>
 
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-semibold text-gray-900">
-                            {interview.position}
-                          </h3>
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                              interview.status === "Scheduled"
-                                ? "bg-blue-50 text-blue-700"
-                                : interview.status === "Completed"
-                                  ? "bg-green-50 text-green-700"
-                                  : "bg-red-50 text-red-700"
-                            }`}
-                          >
-                            {interview.status}
-                          </span>
-                        </div>
+              <select
+                aria-label="Filter interviews by status"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500"
+              >
+                <option value="All">All statuses</option>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
 
-                        <p className="mt-1 text-sm font-medium text-gray-600">
-                          {interview.company}
-                        </p>
-
-                        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-500">
-                          <span className="flex items-center gap-1.5">
-                            <CalendarDays size={15} />
-                            {formatDate(interview.date)}
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <Clock size={15} />
-                            {formatTime(interview.time)}
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            {interview.type === "Video" ? (
-                              <Video size={15} />
-                            ) : interview.type === "Phone" ? (
-                              <Clock size={15} />
-                            ) : (
-                              <MapPin size={15} />
-                            )}
-                            {interview.type}
-                          </span>
-                        </div>
-
-                        {interview.location && (
-                          <p className="mt-2 text-xs text-gray-500">
-                            Location / meeting details: {interview.location}
-                          </p>
-                        )}
-
-                        {interview.notes && (
-                          <p className="mt-1 text-xs text-gray-500">
-                            Notes: {interview.notes}
-                          </p>
-                        )}
-                      </div>
+          <div className="divide-y divide-gray-100">
+            {filteredInterviews.length === 0 ? (
+              <div className="p-12 text-center">
+                <CalendarDays
+                  size={36}
+                  className="mx-auto text-gray-300"
+                />
+                <p className="mt-3 font-medium text-gray-700">
+                  No interviews found
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Try another search or add a new interview.
+                </p>
+              </div>
+            ) : (
+              filteredInterviews.map((interview) => (
+                <div
+                  key={interview.id}
+                  className="flex flex-col gap-4 p-5 transition hover:bg-gray-50/70 xl:flex-row xl:items-center xl:justify-between"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                      {interview.type === "Video" ? (
+                        <Video size={22} />
+                      ) : interview.type === "Phone" ? (
+                        <Clock size={22} />
+                      ) : (
+                        <MapPin size={22} />
+                      )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-                      <select
-                        aria-label={`Change status for ${interview.company} interview`}
-                        value={interview.status}
-                        onChange={(e) =>
-                          updateStatus(
-                            interview.id,
-                            e.target.value as InterviewStatus
-                          )
-                        }
-                        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
-                      >
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                      </select>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold text-gray-900">
+                          {interview.position}
+                        </h3>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                            interview.status === "Scheduled"
+                              ? "bg-blue-50 text-blue-700"
+                              : interview.status === "Completed"
+                                ? "bg-green-50 text-green-700"
+                                : "bg-red-50 text-red-700"
+                          }`}
+                        >
+                          {interview.status}
+                        </span>
+                      </div>
 
-                      <button
-                        onClick={() => openEditModal(interview)}
-                        className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
-                      >
-                        Edit
-                      </button>
+                      <p className="mt-1 text-sm font-medium text-gray-600">
+                        {interview.company}
+                      </p>
 
-                      <button
-                        onClick={() => deleteInterview(interview.id)}
-                        aria-label={`Delete ${interview.company} interview`}
-                        className="rounded-lg border border-gray-200 p-2 text-gray-500 transition hover:bg-red-50 hover:text-red-600"
-                      >
-                        <MoreHorizontal size={18} />
-                      </button>
+                      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-500">
+                        <span className="flex items-center gap-1.5">
+                          <CalendarDays size={15} />
+                          {formatDate(interview.date)}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Clock size={15} />
+                          {formatTime(interview.time)}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          {interview.type === "Video" ? (
+                            <Video size={15} />
+                          ) : interview.type === "Phone" ? (
+                            <Clock size={15} />
+                          ) : (
+                            <MapPin size={15} />
+                          )}
+                          {interview.type}
+                        </span>
+                      </div>
+
+                      {interview.location && (
+                        <p className="mt-2 text-xs text-gray-500">
+                          Location / meeting details: {interview.location}
+                        </p>
+                      )}
+
+                      {interview.notes && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Notes: {interview.notes}
+                        </p>
+                      )}
                     </div>
                   </div>
-                ))
-              )}
-            </div>
 
-            <div className="border-t border-gray-100 px-5 py-4 text-sm text-gray-500">
-              Showing {filteredInterviews.length} of {interviews.length} interviews
-            </div>
-          </section>
-        </div>
-      </main>
+                  <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                    <select
+                      aria-label={`Change status for ${interview.company} interview`}
+                      value={interview.status}
+                      onChange={(e) =>
+                        updateStatus(
+                          interview.id,
+                          e.target.value as InterviewStatus,
+                        )
+                      }
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    >
+                      <option value="Scheduled">Scheduled</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(interview)}
+                      className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteInterview(interview.id)}
+                      aria-label={`Delete ${interview.company} interview`}
+                      title="Delete interview"
+                      className="rounded-lg border border-red-200 p-2 text-red-500 transition hover:bg-red-50 hover:text-red-700"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="border-t border-gray-100 px-5 py-4 text-sm text-gray-500">
+            Showing {filteredInterviews.length} of {interviews.length} interviews
+          </div>
+        </section>
+      </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-gray-900/50 p-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-gray-900/50 p-4">
           <div className="my-auto w-full max-w-2xl rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
               <div>
@@ -520,6 +463,7 @@ export default function InterviewsPage() {
               </div>
 
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
                 aria-label="Close form"
                 className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
@@ -680,6 +624,6 @@ export default function InterviewsPage() {
           </div>
         </div>
       )}
-    </div>
+    </WorkspaceLayout>
   );
 }

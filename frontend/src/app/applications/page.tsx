@@ -1,7 +1,8 @@
-
 "use client";
 
 import { useState } from "react";
+import PageHeader from "@/components/PageHeader";
+import WorkspaceLayout from "@/components/WorkspaceLayout";
 import {
   Search,
   Plus,
@@ -176,32 +177,26 @@ export default function ApplicationsPage() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-[#F5F7FB] p-4 text-slate-800 sm:p-8">
-      <div className="mx-auto max-w-7xl space-y-7">
-        <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <p className="text-sm font-medium text-blue-600">
-              Your job search
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-              Applications
-            </h1>
-            <p className="mt-2 text-sm text-slate-500 sm:text-base">
-              Track your progress from application to offer.
-            </p>
-          </div>
-
-          <button
-            onClick={() => {
-              setError("");
-              setShowForm(true);
-            }}
-            className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-          >
-            <Plus size={18} />
-            Add Application
-          </button>
-        </section>
+    <WorkspaceLayout>
+      <div className="mx-auto max-w-7xl space-y-7 p-4 sm:p-8">
+        <PageHeader
+          eyebrow="Your job search"
+          title="Applications"
+          description="Track your progress from application to offer."
+          action={
+            <button
+              type="button"
+              onClick={() => {
+                setError("");
+                setShowForm(true);
+              }}
+              className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              <Plus size={18} />
+              Add Application
+            </button>
+          }
+        />
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
@@ -209,16 +204,19 @@ export default function ApplicationsPage() {
             value={applications.length}
             icon={<FileText size={21} />}
           />
+
           <SummaryCard
             title="Active Applications"
             value={activeCount}
             icon={<Building2 size={21} />}
           />
+
           <SummaryCard
             title="Interviews"
             value={interviewCount}
             icon={<CalendarDays size={21} />}
           />
+
           <SummaryCard
             title="Offers Received"
             value={offerCount}
@@ -276,7 +274,9 @@ export default function ApplicationsPage() {
             <table className="w-full min-w-[700px] text-left">
               <thead className="bg-slate-50">
                 <tr className="text-xs uppercase tracking-wider text-slate-500">
-                  <th className="px-6 py-4 font-semibold">Company / Position</th>
+                  <th className="px-6 py-4 font-semibold">
+                    Company / Position
+                  </th>
                   <th className="px-6 py-4 font-semibold">Date Applied</th>
                   <th className="px-6 py-4 font-semibold">Status</th>
                   <th className="px-6 py-4 font-semibold">Update Status</th>
@@ -294,6 +294,7 @@ export default function ApplicationsPage() {
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
                           <Building2 size={20} />
                         </div>
+
                         <div>
                           <p className="font-semibold text-slate-900">
                             {application.company}
@@ -305,6 +306,7 @@ export default function ApplicationsPage() {
                             <MapPin size={13} />
                             {application.location}
                           </p>
+
                           {application.notes && (
                             <p className="mt-2 max-w-xs text-xs leading-5 text-slate-500">
                               {application.notes}
@@ -351,6 +353,7 @@ export default function ApplicationsPage() {
                             </option>
                           ))}
                         </select>
+
                         <ChevronDown
                           size={15}
                           className="pointer-events-none absolute right-2 text-slate-400"
@@ -377,7 +380,7 @@ export default function ApplicationsPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/40 p-4 sm:items-center">
+        <div className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-slate-950/40 p-4 sm:items-center">
           <div
             role="dialog"
             aria-modal="true"
@@ -398,6 +401,7 @@ export default function ApplicationsPage() {
               </div>
 
               <button
+                type="button"
                 aria-label="Close form"
                 onClick={() => {
                   setShowForm(false);
@@ -530,12 +534,13 @@ export default function ApplicationsPage() {
           outline: none;
           background: white;
         }
+
         .form-input:focus {
           border-color: #3b82f6;
           box-shadow: 0 0 0 3px rgb(59 130 246 / 12%);
         }
       `}</style>
-    </div>
+    </WorkspaceLayout>
   );
 }
 
@@ -554,6 +559,7 @@ function SummaryCard({
         <p className="text-sm font-medium text-slate-500">{title}</p>
         <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
       </div>
+
       <div className="rounded-xl bg-blue-50 p-3 text-blue-600">{icon}</div>
     </div>
   );

@@ -1,7 +1,8 @@
-
 "use client";
 
 import { useMemo, useState } from "react";
+import PageHeader from "@/components/PageHeader";
+import WorkspaceLayout from "@/components/WorkspaceLayout";
 import {
   Search,
   Plus,
@@ -82,7 +83,13 @@ const initialJobs: Job[] = [
   },
 ];
 
-const employmentTypes = ["All types", "Full-time", "Part-time", "Contract", "Internship"];
+const employmentTypes = [
+  "All types",
+  "Full-time",
+  "Part-time",
+  "Contract",
+  "Internship",
+];
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState(initialJobs);
@@ -107,10 +114,9 @@ export default function JobsPage() {
   );
 
   const filteredJobs = jobs.filter((job) => {
-    const matchesSearch =
-      `${job.company} ${job.position} ${job.location}`
-        .toLowerCase()
-        .includes(search.toLowerCase());
+    const matchesSearch = `${job.company} ${job.position} ${job.location}`
+      .toLowerCase()
+      .includes(search.toLowerCase());
 
     const matchesType =
       typeFilter === "All types" || job.employmentType === typeFilter;
@@ -161,30 +167,26 @@ export default function JobsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F7FB] p-4 text-slate-800 sm:p-8">
-      <div className="mx-auto max-w-7xl space-y-7">
-        <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <p className="text-sm font-medium text-blue-600">Your opportunities</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-              Jobs
-            </h1>
-            <p className="mt-2 text-sm text-slate-500 sm:text-base">
-              Organize the opportunities you want to pursue.
-            </p>
-          </div>
-
-          <button
-            onClick={() => {
-              setError("");
-              setShowForm(true);
-            }}
-            className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-          >
-            <Plus size={18} />
-            Add Job
-          </button>
-        </section>
+    <WorkspaceLayout>
+      <div className="mx-auto max-w-7xl space-y-7 p-4 sm:p-8">
+        <PageHeader
+          eyebrow="Your opportunities"
+          title="Jobs"
+          description="Organize the opportunities you want to pursue."
+          action={
+            <button
+              type="button"
+              onClick={() => {
+                setError("");
+                setShowForm(true);
+              }}
+              className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              <Plus size={18} />
+              Add Job
+            </button>
+          }
+        />
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Summary
@@ -192,14 +194,22 @@ export default function JobsPage() {
             value={jobs.length}
             icon={<BriefcaseBusiness size={20} />}
           />
+
           <Summary
             label="Full-time Roles"
-            value={jobs.filter((job) => job.employmentType === "Full-time").length}
+            value={
+              jobs.filter((job) => job.employmentType === "Full-time").length
+            }
             icon={<Building2 size={20} />}
           />
+
           <Summary
             label="Remote Opportunities"
-            value={jobs.filter((job) => job.location.toLowerCase().includes("remote")).length}
+            value={
+              jobs.filter((job) =>
+                job.location.toLowerCase().includes("remote"),
+              ).length
+            }
             icon={<MapPin size={20} />}
           />
         </section>
@@ -207,7 +217,9 @@ export default function JobsPage() {
         <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
           <div className="flex items-center gap-2">
             <SlidersHorizontal size={19} className="text-slate-500" />
-            <h2 className="font-semibold text-slate-900">Find opportunities</h2>
+            <h2 className="font-semibold text-slate-900">
+              Find opportunities
+            </h2>
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -249,7 +261,10 @@ export default function JobsPage() {
           </div>
 
           <p className="mt-4 text-sm text-slate-500">
-            Showing <span className="font-semibold text-slate-700">{filteredJobs.length}</span>{" "}
+            Showing{" "}
+            <span className="font-semibold text-slate-700">
+              {filteredJobs.length}
+            </span>{" "}
             of {jobs.length} saved jobs
           </p>
         </section>
@@ -270,13 +285,16 @@ export default function JobsPage() {
                     <h2 className="text-lg font-bold text-slate-900">
                       {job.position}
                     </h2>
-                    <p className="mt-1 font-medium text-slate-600">{job.company}</p>
+                    <p className="mt-1 font-medium text-slate-600">
+                      {job.company}
+                    </p>
 
                     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-500">
                       <span className="flex items-center gap-1.5">
                         <MapPin size={15} />
                         {job.location}
                       </span>
+
                       <span className="flex items-center gap-1.5">
                         <Clock3 size={15} />
                         {job.employmentType}
@@ -289,9 +307,11 @@ export default function JobsPage() {
                   <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                     Saved
                   </span>
+
                   <p className="mt-3 text-sm font-semibold text-slate-800">
                     {job.salary}
                   </p>
+
                   <p className="mt-1 text-xs text-slate-400">
                     Added {job.dateAdded}
                   </p>
@@ -306,12 +326,21 @@ export default function JobsPage() {
 
           {filteredJobs.length === 0 && (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
-              <BriefcaseBusiness size={32} className="mx-auto text-slate-300" />
-              <h3 className="mt-4 font-semibold text-slate-800">No jobs found</h3>
+              <BriefcaseBusiness
+                size={32}
+                className="mx-auto text-slate-300"
+              />
+
+              <h3 className="mt-4 font-semibold text-slate-800">
+                No jobs found
+              </h3>
+
               <p className="mt-2 text-sm text-slate-500">
                 Try changing your search or filters.
               </p>
+
               <button
+                type="button"
                 onClick={() => {
                   setSearch("");
                   setTypeFilter("All types");
@@ -327,7 +356,7 @@ export default function JobsPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/40 p-4 sm:items-center">
+        <div className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-slate-950/40 p-4 sm:items-center">
           <div
             role="dialog"
             aria-modal="true"
@@ -336,14 +365,20 @@ export default function JobsPage() {
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 id="add-job-title" className="text-xl font-bold text-slate-900">
+                <h2
+                  id="add-job-title"
+                  className="text-xl font-bold text-slate-900"
+                >
                   Add a job
                 </h2>
+
                 <p className="mt-1 text-sm text-slate-500">
                   Record an opportunity you want to track.
                 </p>
               </div>
+
               <button
+                type="button"
                 aria-label="Close form"
                 onClick={() => {
                   setShowForm(false);
@@ -396,7 +431,10 @@ export default function JobsPage() {
                   <select
                     value={form.employmentType}
                     onChange={(event) =>
-                      setForm({ ...form, employmentType: event.target.value })
+                      setForm({
+                        ...form,
+                        employmentType: event.target.value,
+                      })
                     }
                     className="form-input"
                   >
@@ -449,6 +487,7 @@ export default function JobsPage() {
                 >
                   Cancel
                 </button>
+
                 <button
                   type="submit"
                   className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
@@ -471,12 +510,13 @@ export default function JobsPage() {
           outline: none;
           background: white;
         }
+
         .form-input:focus {
           border-color: #3b82f6;
           box-shadow: 0 0 0 3px rgb(59 130 246 / 12%);
         }
       `}</style>
-    </div>
+    </WorkspaceLayout>
   );
 }
 
@@ -495,6 +535,7 @@ function Summary({
         <p className="text-sm font-medium text-slate-500">{label}</p>
         <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
       </div>
+
       <div className="rounded-xl bg-blue-50 p-3 text-blue-600">{icon}</div>
     </div>
   );
