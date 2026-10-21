@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
 import {
@@ -12,6 +12,8 @@ import {
   CalendarDays,
   X,
   ChevronDown,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 type ApplicationStatus =
@@ -30,6 +32,8 @@ type Application = {
   status: ApplicationStatus;
   notes: string;
 };
+
+type ApplicationForm = Omit<Application, "id">;
 
 const initialApplications: Application[] = [
   {
@@ -86,28 +90,39 @@ const statusStyles: Record<ApplicationStatus, string> = {
   Rejected: "bg-red-50 text-red-700",
 };
 
+const emptyForm: ApplicationForm = {
+  company: "",
+  position: "",
+  location: "",
+  dateApplied: "",
+  status: "Applied",
+  notes: "",
+};
+
+function getLocalDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 export default function ApplicationsPage() {
-  const [applications, setApplications] = useState(initialApplications);
+  const [applications, setApplications] =
+    useState<Application[]>(initialApplications);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All statuses");
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
-
-  const [form, setForm] = useState({
-    company: "",
-    position: "",
-    location: "",
-    dateApplied: new Date().toISOString().slice(0, 10),
-    status: "Applied" as ApplicationStatus,
-    notes: "",
-  });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<ApplicationForm>(emptyForm);
 
   const filteredApplications = applications.filter((application) => {
-    const matchesSearch = (
+    const matchesSearch =
       `${application.company} ${application.position} ${application.location}`
-    )
-      .toLowerCase()
-      .includes(search.toLowerCase());
+        .toLowerCase()
+        .includes(search.toLowerCase());
 
     const matchesStatus =
       statusFilter === "All statuses" ||
@@ -116,9 +131,38 @@ export default function ApplicationsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  function handleAddApplication(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
+  function openAddApplication() {
+    setEditingId(null);
+    setForm({
+      ...emptyForm,
+      dateApplied: getLocalDate(),
+    });
+    setError("");
+    setShowForm(true);
+  }
+
+  function openEditApplication(application: Application) {
+    setEditingId(application.id);
+    setForm({
+      company: application.company,
+      position: application.position,
+      location: application.location,
+      dateApplied: application.dateApplied,
+      status: application.status,
+      notes: application.notes,
+    });
+    setError("");
+    setShowForm(true);
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setEditingId(null);
+    setForm(emptyForm);
+    setError("");
+  }
+
+  function handleSaveApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!form.company.trim() || !form.position.trim()) {
@@ -126,8 +170,12 @@ export default function ApplicationsPage() {
       return;
     }
 
-    const newApplication: Application = {
-      id: Date.now(),
+    if (!form.dateApplied) {
+      setError("Date applied is required.");
+      return;
+    }
+
+    const applicationData: ApplicationForm = {
       company: form.company.trim(),
       position: form.position.trim(),
       location: form.location.trim() || "Not specified",
@@ -136,20 +184,40 @@ export default function ApplicationsPage() {
       notes: form.notes.trim(),
     };
 
-    setApplications((current) => [newApplication, ...current]);
+    if (editingId !== null) {
+      setApplications((current) =>
+        current.map((application) =>
+          application.id === editingId
+            ? { ...application, ...applicationData }
+            : application,
+        ),
+      );
+    } else {
+      const newApplication: Application = {
+        id: Date.now(),
+        ...applicationData,
+      };
+
+      setApplications((current) => [newApplication, ...current]);
+    }
+
     setSearch("");
     setStatusFilter("All statuses");
-    setError("");
-    setShowForm(false);
+    closeForm();
+  }
 
-    setForm({
-      company: "",
-      position: "",
-      location: "",
-      dateApplied: new Date().toISOString().slice(0, 10),
-      status: "Applied",
-      notes: "",
-    });
+  function handleDeleteApplication(id: number) {
+    const application = applications.find((item) => item.id === id);
+
+    if (!application) return;
+
+    const confirmed = window.confirm(
+      `Delete your application for "${application.position}" at ${application.company}?`,
+    );
+
+    if (!confirmed) return;
+
+    setApplications((current) => current.filter((item) => item.id !== id));
   }
 
   function updateStatus(id: number, status: ApplicationStatus) {
@@ -186,10 +254,7 @@ export default function ApplicationsPage() {
           action={
             <button
               type="button"
-              onClick={() => {
-                setError("");
-                setShowForm(true);
-              }}
+              onClick={openAddApplication}
               className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
             >
               <Plus size={18} />
@@ -232,6 +297,7 @@ export default function ApplicationsPage() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search company, role, or location..."
+                aria-label="Search applications"
                 className="w-full min-w-0 bg-transparent text-sm outline-none"
               />
             </label>
@@ -242,7 +308,7 @@ export default function ApplicationsPage() {
               onChange={(event) => setStatusFilter(event.target.value)}
               className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-blue-500"
             >
-              <option>All statuses</option>
+              <option value="All statuses">All statuses</option>
               {statuses.map((status) => (
                 <option key={status} value={status}>
                   {status}
@@ -271,15 +337,24 @@ export default function ApplicationsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px] text-left">
+            <table className="w-full min-w-[900px] text-left">
               <thead className="bg-slate-50">
                 <tr className="text-xs uppercase tracking-wider text-slate-500">
-                  <th className="px-6 py-4 font-semibold">
+                  <th scope="col" className="px-6 py-4 font-semibold">
                     Company / Position
                   </th>
-                  <th className="px-6 py-4 font-semibold">Date Applied</th>
-                  <th className="px-6 py-4 font-semibold">Status</th>
-                  <th className="px-6 py-4 font-semibold">Update Status</th>
+                  <th scope="col" className="px-6 py-4 font-semibold">
+                    Date Applied
+                  </th>
+                  <th scope="col" className="px-6 py-4 font-semibold">
+                    Status
+                  </th>
+                  <th scope="col" className="px-6 py-4 font-semibold">
+                    Update Status
+                  </th>
+                  <th scope="col" className="px-6 py-4 font-semibold">
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
@@ -337,7 +412,7 @@ export default function ApplicationsPage() {
                     <td className="px-6 py-5">
                       <label className="relative flex items-center">
                         <select
-                          aria-label={`Update status for ${application.company}`}
+                          aria-label={`Update status for ${application.position} at ${application.company}`}
                           value={application.status}
                           onChange={(event) =>
                             updateStatus(
@@ -360,13 +435,39 @@ export default function ApplicationsPage() {
                         />
                       </label>
                     </td>
+
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditApplication(application)}
+                          aria-label={`Edit application for ${application.position} at ${application.company}`}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                        >
+                          <Pencil size={15} />
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleDeleteApplication(application.id)
+                          }
+                          aria-label={`Delete application for ${application.position} at ${application.company}`}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                        >
+                          <Trash2 size={15} />
+                          Delete
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
 
                 {filteredApplications.length === 0 && (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={5}
                       className="px-6 py-14 text-center text-sm text-slate-500"
                     >
                       No applications found. Try another search or filter.
@@ -384,36 +485,40 @@ export default function ApplicationsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="add-application-title"
+            aria-labelledby="application-form-title"
             className="my-4 w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl sm:p-8"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2
-                  id="add-application-title"
+                  id="application-form-title"
                   className="text-xl font-bold text-slate-900"
                 >
-                  Add Application
+                  {editingId !== null
+                    ? "Edit Application"
+                    : "Add Application"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Record a job you have applied for.
+                  {editingId !== null
+                    ? "Update the details of your application."
+                    : "Record a job you have applied for."}
                 </p>
               </div>
 
               <button
                 type="button"
                 aria-label="Close form"
-                onClick={() => {
-                  setShowForm(false);
-                  setError("");
-                }}
+                onClick={closeForm}
                 className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleAddApplication} className="mt-6 space-y-4">
+            <form
+              onSubmit={handleSaveApplication}
+              className="mt-6 space-y-4"
+            >
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField label="Company *">
                   <input
@@ -450,7 +555,7 @@ export default function ApplicationsPage() {
                   />
                 </FormField>
 
-                <FormField label="Date Applied">
+                <FormField label="Date Applied *">
                   <input
                     type="date"
                     required
@@ -503,10 +608,7 @@ export default function ApplicationsPage() {
               <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setError("");
-                  }}
+                  onClick={closeForm}
                   className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
                 >
                   Cancel
@@ -516,7 +618,9 @@ export default function ApplicationsPage() {
                   type="submit"
                   className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
                 >
-                  Save Application
+                  {editingId !== null
+                    ? "Save Changes"
+                    : "Save Application"}
                 </button>
               </div>
             </form>
@@ -551,7 +655,7 @@ function SummaryCard({
 }: {
   title: string;
   value: number;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5">
@@ -570,7 +674,7 @@ function FormField({
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <label className="block space-y-2 text-sm font-medium text-slate-700">
