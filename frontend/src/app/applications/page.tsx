@@ -15,64 +15,13 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-
-type ApplicationStatus =
-  | "Applied"
-  | "In Review"
-  | "Interview"
-  | "Offer"
-  | "Rejected";
-
-type Application = {
-  id: number;
-  company: string;
-  position: string;
-  location: string;
-  dateApplied: string;
-  status: ApplicationStatus;
-  notes: string;
-};
+import {
+  useApplications,
+  type Application,
+  type ApplicationStatus,
+} from "@/components/ApplicationsProvider";
 
 type ApplicationForm = Omit<Application, "id">;
-
-const initialApplications: Application[] = [
-  {
-    id: 1,
-    company: "Google",
-    position: "Junior Software Engineer",
-    location: "Makati, Philippines",
-    dateApplied: "2026-10-09",
-    status: "Applied",
-    notes: "Submitted application through the company website.",
-  },
-  {
-    id: 2,
-    company: "Microsoft",
-    position: "Frontend Developer",
-    location: "Remote",
-    dateApplied: "2026-10-07",
-    status: "Interview",
-    notes: "Prepare for the technical interview.",
-  },
-  {
-    id: 3,
-    company: "Accenture",
-    position: "Associate Software Engineer",
-    location: "Taguig, Philippines",
-    dateApplied: "2026-10-05",
-    status: "In Review",
-    notes: "Waiting for an update from recruitment.",
-  },
-  {
-    id: 4,
-    company: "Canva",
-    position: "UI Developer Intern",
-    location: "Remote",
-    dateApplied: "2026-10-03",
-    status: "Rejected",
-    notes: "Application closed.",
-  },
-];
 
 const statuses: ApplicationStatus[] = [
   "Applied",
@@ -109,8 +58,7 @@ function getLocalDate() {
 }
 
 export default function ApplicationsPage() {
-  const [applications, setApplications] =
-    useState<Application[]>(initialApplications);
+  const { applications, setApplications } = useApplications();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All statuses");
   const [showForm, setShowForm] = useState(false);

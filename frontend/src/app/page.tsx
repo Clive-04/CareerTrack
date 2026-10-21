@@ -15,56 +15,47 @@ import {
   CircleCheck,
   MapPin,
 } from "lucide-react";
-
-const applications = [
-  {
-    company: "Google",
-    initials: "G",
-    color: "bg-blue-100 text-blue-700",
-    position: "Junior Software Engineer",
-    location: "Makati, Philippines",
-    date: "Oct 9, 2026",
-    status: "Applied",
-  },
-  {
-    company: "Microsoft",
-    initials: "M",
-    color: "bg-sky-100 text-sky-700",
-    position: "Frontend Developer",
-    location: "Remote",
-    date: "Oct 7, 2026",
-    status: "Interview",
-  },
-  {
-    company: "Accenture",
-    initials: "A",
-    color: "bg-purple-100 text-purple-700",
-    position: "Associate Software Engineer",
-    location: "Taguig, Philippines",
-    date: "Oct 5, 2026",
-    status: "In Review",
-  },
-  {
-    company: "Canva",
-    initials: "C",
-    color: "bg-rose-100 text-rose-700",
-    position: "UI Developer Intern",
-    location: "Remote",
-    date: "Oct 3, 2026",
-    status: "Rejected",
-  },
-];
+import { useApplications } from "@/components/ApplicationsProvider";
 
 const statusStyles: Record<string, string> = {
   Applied: "bg-blue-50 text-blue-700",
   Interview: "bg-green-50 text-green-700",
   "In Review": "bg-amber-50 text-amber-700",
+  Offer: "bg-green-50 text-green-700",
   Rejected: "bg-red-50 text-red-700",
 };
 
 export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const router = useRouter();
+  const { applications: sharedApplications } = useApplications();
+
+  const companyColors: Record<string, string> = {
+    Google: "bg-blue-100 text-blue-700",
+    Microsoft: "bg-sky-100 text-sky-700",
+    Accenture: "bg-purple-100 text-purple-700",
+    Canva: "bg-rose-100 text-rose-700",
+  };
+
+  const applications = [...sharedApplications]
+    .sort(
+      (a, b) =>
+        b.dateApplied.localeCompare(a.dateApplied) || b.id - a.id,
+    )
+    .map((application) => ({
+      ...application,
+      initials: application.company.slice(0, 1).toUpperCase(),
+      color:
+        companyColors[application.company] ??
+        "bg-blue-100 text-blue-700",
+      date: new Date(
+        `${application.dateApplied}T12:00:00`,
+      ).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    }));
 
   const filteredApplications = applications.filter((application) =>
     `${application.company} ${application.position} ${application.status}`
@@ -157,7 +148,7 @@ export default function DashboardPage() {
                     <tbody>
                       {filteredApplications.map((application) => (
                         <tr
-                          key={application.company}
+                          key={application.id}
                           className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70"
                         >
                           <td className="py-4 pr-4">
