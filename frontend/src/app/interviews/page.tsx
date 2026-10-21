@@ -109,6 +109,7 @@ export default function InterviewsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [error, setError] = useState("");
 
   const today = new Date().toLocaleDateString("en-CA");
 
@@ -143,12 +144,14 @@ export default function InterviewsPage() {
   }, [interviews, search, statusFilter]);
 
   function openAddModal() {
+    setError("");
     setEditingId(null);
     setForm(emptyForm);
     setShowModal(true);
   }
 
   function openEditModal(interview: Interview) {
+    setError("");
     setEditingId(interview.id);
     setForm({
       company: interview.company,
@@ -163,6 +166,13 @@ export default function InterviewsPage() {
     setShowModal(true);
   }
 
+  function closeModal() {
+    setShowModal(false);
+    setEditingId(null);
+    setForm(emptyForm);
+    setError("");
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
@@ -170,9 +180,13 @@ export default function InterviewsPage() {
     const position = form.position.trim();
 
     if (!company || !position) {
-      window.alert("Company and position are required and cannot contain only spaces.");
+      setError(
+        "Company and position are required and cannot contain only spaces.",
+      );
       return;
     }
+
+    setError("");
 
     const interviewData = {
       ...form,
@@ -199,9 +213,7 @@ export default function InterviewsPage() {
       setInterviews((current) => [...current, newInterview]);
     }
 
-    setShowModal(false);
-    setEditingId(null);
-    setForm(emptyForm);
+    closeModal();
   }
 
   function updateStatus(id: number, status: InterviewStatus) {
@@ -480,7 +492,7 @@ export default function InterviewsPage() {
 
               <button
                 type="button"
-                onClick={() => setShowModal(false)}
+                onClick={closeModal}
                 aria-label="Close form"
                 className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
               >
@@ -620,10 +632,16 @@ export default function InterviewsPage() {
                 </div>
               </div>
 
+              {error && (
+                <p role="alert" className="text-sm text-red-600">
+                  {error}
+                </p>
+              )}
+
               <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={closeModal}
                   className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
                 >
                   Cancel

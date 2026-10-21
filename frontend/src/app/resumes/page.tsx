@@ -135,6 +135,13 @@ export default function ResumesPage() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
+    if (!form.name.trim() || !form.targetRole.trim()) {
+      setMessage(
+        "Resume name and target role are required and cannot contain only spaces.",
+      );
+      return;
+    }
+
     const fileName = selectedFile
       ? selectedFile.name
       : form.fileName.trim();
