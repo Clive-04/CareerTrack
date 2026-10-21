@@ -511,7 +511,11 @@ export default function ResumesPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5 p-6">
+            <form
+              noValidate
+              onSubmit={handleSubmit}
+              className="space-y-5 p-6"
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-sm font-medium">
