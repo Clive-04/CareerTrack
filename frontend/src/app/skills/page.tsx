@@ -129,6 +129,7 @@ export default function SkillsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [error, setError] = useState("");
 
   const filteredSkills = useMemo(() => {
     return skills.filter((skill) => {
@@ -162,12 +163,14 @@ export default function SkillsPage() {
       : "0.0";
 
   function openAddModal() {
+    setError("");
     setEditingId(null);
     setForm(emptyForm);
     setShowModal(true);
   }
 
   function openEditModal(skill: Skill) {
+    setError("");
     setEditingId(skill.id);
     setForm({
       name: skill.name,
@@ -182,14 +185,27 @@ export default function SkillsPage() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
+    const name = form.name.trim();
+
+    if (!name) {
+      setError("Skill name is required and cannot contain only spaces.");
+      return;
+    }
+
     const years = Number(form.yearsExperience);
 
-    if (!Number.isFinite(years) || years < 0 || years > 60) {
+    if (
+      !form.yearsExperience.trim() ||
+      !Number.isFinite(years) ||
+      years < 0 ||
+      years > 60
+    ) {
+      setError("Years of experience must be between 0 and 60.");
       return;
     }
 
     const skillData = {
-      name: form.name.trim(),
+      name,
       category: form.category,
       proficiency: form.proficiency,
       yearsExperience: years,
@@ -199,8 +215,8 @@ export default function SkillsPage() {
     if (editingId !== null) {
       setSkills((current) =>
         current.map((skill) =>
-          skill.id === editingId ? { ...skill, ...skillData } : skill
-        )
+          skill.id === editingId ? { ...skill, ...skillData } : skill,
+        ),
       );
     } else {
       setSkills((current) => [
@@ -212,6 +228,7 @@ export default function SkillsPage() {
       ]);
     }
 
+    setError("");
     setShowModal(false);
     setEditingId(null);
     setForm(emptyForm);
@@ -610,6 +627,12 @@ export default function SkillsPage() {
                   />
                 </div>
               </div>
+
+              {error && (
+                <p role="alert" className="text-sm text-red-600">
+                  {error}
+                </p>
+              )}
 
               <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end">
                 <button
