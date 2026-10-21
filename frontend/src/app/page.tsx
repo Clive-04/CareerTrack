@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
 import {
@@ -9,14 +9,10 @@ import {
   FileText,
   CalendarDays,
   GraduationCap,
-  UserRound,
-  Bell,
   Search,
   Plus,
-  TrendingUp,
   Clock3,
   CircleCheck,
-  ChevronDown,
   MapPin,
 } from "lucide-react";
 
@@ -69,15 +65,6 @@ const statusStyles: Record<string, string> = {
 export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const router = useRouter();
-  const pathname = usePathname();
-
-  const activePage =
-    pathname === "/"
-      ? "Dashboard"
-      : pathname
-          .split("/")
-          .filter(Boolean)[0]
-          .replace(/^./, (letter) => letter.toUpperCase());
 
   const filteredApplications = applications.filter((application) =>
     `${application.company} ${application.position} ${application.status}`
@@ -89,7 +76,7 @@ export default function DashboardPage() {
     <WorkspaceLayout>
       <div className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
             <PageHeader
-              eyebrow="Friday, October 9, 2026"
+              eyebrow="Your job search"
               title="Welcome back!"
               description="Here's an overview of your job search progress."
               action={
