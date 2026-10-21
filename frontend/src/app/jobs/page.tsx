@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
 import {
@@ -12,6 +12,8 @@ import {
   Building2,
   X,
   SlidersHorizontal,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 type Job = {
@@ -91,22 +93,24 @@ const employmentTypes = [
   "Internship",
 ];
 
+const emptyForm = {
+  company: "",
+  position: "",
+  location: "",
+  employmentType: "Full-time",
+  salary: "",
+  description: "",
+};
+
 export default function JobsPage() {
-  const [jobs, setJobs] = useState(initialJobs);
+  const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("All types");
   const [locationFilter, setLocationFilter] = useState("All locations");
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
-
-  const [form, setForm] = useState({
-    company: "",
-    position: "",
-    location: "",
-    employmentType: "Full-time",
-    salary: "",
-    description: "",
-  });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState(emptyForm);
 
   const locations = useMemo(
     () => ["All locations", ...new Set(jobs.map((job) => job.location))],
@@ -127,7 +131,35 @@ export default function JobsPage() {
     return matchesSearch && matchesType && matchesLocation;
   });
 
-  function handleAddJob(event: React.FormEvent<HTMLFormElement>) {
+  function openAddJob() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setError("");
+    setShowForm(true);
+  }
+
+  function openEditJob(job: Job) {
+    setEditingId(job.id);
+    setForm({
+      company: job.company,
+      position: job.position,
+      location: job.location,
+      employmentType: job.employmentType,
+      salary: job.salary,
+      description: job.description,
+    });
+    setError("");
+    setShowForm(true);
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setEditingId(null);
+    setForm(emptyForm);
+    setError("");
+  }
+
+  function handleSaveJob(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!form.company.trim() || !form.position.trim()) {
@@ -135,35 +167,54 @@ export default function JobsPage() {
       return;
     }
 
-    const newJob: Job = {
-      id: Date.now(),
+    const jobData = {
       company: form.company.trim(),
       position: form.position.trim(),
       location: form.location.trim() || "Not specified",
       employmentType: form.employmentType,
       salary: form.salary.trim() || "Not specified",
-      dateAdded: new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
       description: form.description.trim() || "No description provided.",
     };
 
-    setJobs((currentJobs) => [newJob, ...currentJobs]);
+    if (editingId !== null) {
+      setJobs((currentJobs) =>
+        currentJobs.map((job) =>
+          job.id === editingId ? { ...job, ...jobData } : job,
+        ),
+      );
+    } else {
+      const newJob: Job = {
+        id: Date.now(),
+        ...jobData,
+        dateAdded: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+      };
+
+      setJobs((currentJobs) => [newJob, ...currentJobs]);
+    }
+
     setSearch("");
     setTypeFilter("All types");
     setLocationFilter("All locations");
-    setForm({
-      company: "",
-      position: "",
-      location: "",
-      employmentType: "Full-time",
-      salary: "",
-      description: "",
-    });
-    setError("");
-    setShowForm(false);
+    closeForm();
+  }
+
+  function handleDeleteJob(id: number) {
+    const job = jobs.find((item) => item.id === id);
+
+    if (!job) return;
+
+    const confirmed = window.confirm(
+      `Delete "${job.position}" at ${job.company}?`,
+    );
+
+    if (!confirmed) return;
+
+    setJobs((currentJobs) => currentJobs.filter((item) => item.id !== id));
+    setLocationFilter("All locations");
   }
 
   return (
@@ -176,10 +227,7 @@ export default function JobsPage() {
           action={
             <button
               type="button"
-              onClick={() => {
-                setError("");
-                setShowForm(true);
-              }}
+              onClick={openAddJob}
               className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
             >
               <Plus size={18} />
@@ -229,6 +277,7 @@ export default function JobsPage() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search company, role, location..."
+                aria-label="Search jobs"
                 className="w-full min-w-0 bg-transparent text-sm outline-none"
               />
             </label>
@@ -321,6 +370,28 @@ export default function JobsPage() {
               <p className="mt-5 text-sm leading-6 text-slate-600">
                 {job.description}
               </p>
+
+              <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => openEditJob(job)}
+                  aria-label={`Edit ${job.position} at ${job.company}`}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  <Pencil size={16} />
+                  Edit
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeleteJob(job.id)}
+                  aria-label={`Delete ${job.position} at ${job.company}`}
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+              </div>
             </article>
           ))}
 
@@ -360,37 +431,36 @@ export default function JobsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="add-job-title"
+            aria-labelledby="job-form-title"
             className="my-4 w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl sm:p-8"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2
-                  id="add-job-title"
+                  id="job-form-title"
                   className="text-xl font-bold text-slate-900"
                 >
-                  Add a job
+                  {editingId !== null ? "Edit job" : "Add a job"}
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Record an opportunity you want to track.
+                  {editingId !== null
+                    ? "Update the details of this opportunity."
+                    : "Record an opportunity you want to track."}
                 </p>
               </div>
 
               <button
                 type="button"
                 aria-label="Close form"
-                onClick={() => {
-                  setShowForm(false);
-                  setError("");
-                }}
+                onClick={closeForm}
                 className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleAddJob} className="mt-6 space-y-4">
+            <form onSubmit={handleSaveJob} className="mt-6 space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField label="Company *">
                   <input
@@ -479,10 +549,7 @@ export default function JobsPage() {
               <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setError("");
-                  }}
+                  onClick={closeForm}
                   className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
                 >
                   Cancel
@@ -492,7 +559,7 @@ export default function JobsPage() {
                   type="submit"
                   className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
                 >
-                  Save Job
+                  {editingId !== null ? "Save Changes" : "Save Job"}
                 </button>
               </div>
             </form>
@@ -527,7 +594,7 @@ function Summary({
 }: {
   label: string;
   value: number;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5">
@@ -546,7 +613,7 @@ function FormField({
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <label className="block space-y-2 text-sm font-medium text-slate-700">
