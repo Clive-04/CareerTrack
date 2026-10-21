@@ -18,7 +18,6 @@ import {
   CircleCheck,
   ChevronDown,
   MapPin,
-  MoreHorizontal,
 } from "lucide-react";
 
 const applications = [
@@ -164,7 +163,6 @@ export default function DashboardPage() {
                         <th className="pb-3 pr-4 font-semibold">Company / Role</th>
                         <th className="pb-3 pr-4 font-semibold">Date Applied</th>
                         <th className="pb-3 pr-4 font-semibold">Status</th>
-                        <th className="pb-3 font-semibold">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -204,20 +202,12 @@ export default function DashboardPage() {
                               {application.status}
                             </span>
                           </td>
-                          <td className="py-4">
-                            <button
-                              aria-label={`More options for ${application.company}`}
-                              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                            >
-                              <MoreHorizontal size={19} />
-                            </button>
-                          </td>
                         </tr>
                       ))}
                       {filteredApplications.length === 0 && (
                         <tr>
                           <td
-                            colSpan={4}
+                            colSpan={3}
                             className="py-10 text-center text-sm text-slate-500"
                           >
                             No applications match your search.
