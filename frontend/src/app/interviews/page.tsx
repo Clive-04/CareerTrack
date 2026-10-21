@@ -166,18 +166,34 @@ export default function InterviewsPage() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
+    const company = form.company.trim();
+    const position = form.position.trim();
+
+    if (!company || !position) {
+      window.alert("Company and position are required and cannot contain only spaces.");
+      return;
+    }
+
+    const interviewData = {
+      ...form,
+      company,
+      position,
+      location: form.location.trim(),
+      notes: form.notes.trim(),
+    };
+
     if (editingId !== null) {
       setInterviews((current) =>
         current.map((interview) =>
           interview.id === editingId
-            ? { ...interview, ...form }
+            ? { ...interview, ...interviewData }
             : interview,
         ),
       );
     } else {
       const newInterview: Interview = {
         id: Date.now(),
-        ...form,
+        ...interviewData,
       };
 
       setInterviews((current) => [...current, newInterview]);
