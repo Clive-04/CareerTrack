@@ -93,7 +93,7 @@ export default function DashboardPage() {
             <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <SummaryCard
                 title="Total Applications"
-                value="12"
+                value={String(applications.length)}
                 note="Applications tracked"
                 icon={FileText}
                 iconStyle="bg-blue-50 text-blue-600"
@@ -107,14 +107,16 @@ export default function DashboardPage() {
               />
               <SummaryCard
                 title="Jobs Saved"
-                value="18"
+                value="5"
                 note="Opportunities collected"
                 icon={BriefcaseBusiness}
                 iconStyle="bg-amber-50 text-amber-600"
               />
               <SummaryCard
                 title="Offers Received"
-                value="1"
+                value={String(
+                  applications.filter((application) => application.status === "Offer").length,
+                )}
                 note="A step toward your goal"
                 icon={CircleCheck}
                 iconStyle="bg-green-50 text-green-600"
