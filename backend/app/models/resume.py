@@ -29,6 +29,8 @@ class Resume(Base):
         nullable=False,
     )
 
+    target_role: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+
     file_name: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
@@ -43,6 +45,9 @@ class Resume(Base):
         Text,
         nullable=True,
     )
+
+    skills_json: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     is_default: Mapped[bool] = mapped_column(
         Boolean,

@@ -4,14 +4,52 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
 from app.db.session import get_db
-from app.models import Job, User
+from app.models import Job, ResumeAnalysis, User
 from app.schemas.job import JobCreate, JobResponse, JobUpdate
+from app.core.job_description import validate_job_description
 
 
 router = APIRouter(
     prefix="/jobs",
     tags=["Jobs"],
 )
+
+
+def latest_analyses(db: Session, user_id, job_ids) -> dict:
+    ids = list(job_ids)
+    if not ids:
+        return {}
+    rows = db.scalars(
+        select(ResumeAnalysis)
+        .where(
+            ResumeAnalysis.user_id == user_id,
+            ResumeAnalysis.job_id.in_(ids),
+        )
+        .order_by(ResumeAnalysis.created_at.desc())
+    ).all()
+    latest = {}
+    for row in rows:
+        latest.setdefault(row.job_id, row)
+    return latest
+
+
+def job_response(job: Job, analysis: ResumeAnalysis | None = None) -> JobResponse:
+    score = analysis.result.get("score") if analysis else None
+    return JobResponse(
+        id=str(job.id),
+        company=job.company,
+        position=job.position,
+        location=job.location,
+        employment_type=job.employment_type,
+        job_url=job.job_url,
+        description=job.description,
+        salary_min=job.salary_min,
+        salary_max=job.salary_max,
+        created_at=job.created_at,
+        latest_analysis_score=int(score) if isinstance(score, (int, float)) else None,
+        latest_analysis_resume_id=str(analysis.resume_id) if analysis and analysis.resume_id else None,
+        latest_analysis_created_at=analysis.created_at if analysis else None,
+    )
 
 
 @router.post(
@@ -40,17 +78,7 @@ def create_job(
     db.commit()
     db.refresh(new_job)
 
-    return JobResponse(
-        id=str(new_job.id),
-        company=new_job.company,
-        position=new_job.position,
-        location=new_job.location,
-        employment_type=new_job.employment_type,
-        job_url=new_job.job_url,
-        description=new_job.description,
-        salary_min=new_job.salary_min,
-        salary_max=new_job.salary_max,
-    )
+    return job_response(new_job)
 
 @router.get(
     "",
@@ -90,20 +118,8 @@ def get_jobs(
 
     jobs = db.scalars(query).all()
 
-    return [
-        JobResponse(
-            id=str(job.id),
-            company=job.company,
-            position=job.position,
-            location=job.location,
-            employment_type=job.employment_type,
-            job_url=job.job_url,
-            description=job.description,
-            salary_min=job.salary_min,
-            salary_max=job.salary_max,
-        )
-        for job in jobs
-    ]
+    analyses = latest_analyses(db, current_user.id, (job.id for job in jobs))
+    return [job_response(job, analyses.get(job.id)) for job in jobs]
 
 @router.get(
     "/{job_id}",
@@ -127,17 +143,8 @@ def get_job(
             detail="Job not found",
         )
 
-    return JobResponse(
-        id=str(job.id),
-        company=job.company,
-        position=job.position,
-        location=job.location,
-        employment_type=job.employment_type,
-        job_url=job.job_url,
-        description=job.description,
-        salary_min=job.salary_min,
-        salary_max=job.salary_max,
-    )
+    analysis = latest_analyses(db, current_user.id, [job.id]).get(job.id)
+    return job_response(job, analysis)
 
 @router.patch(
     "/{job_id}",
@@ -163,6 +170,10 @@ def update_job(
         )
 
     update_data = job_data.model_dump(exclude_unset=True)
+    try:
+        validate_job_description(update_data.get("description", job.description))
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from None
 
     for field, value in update_data.items():
         setattr(job, field, value)
@@ -170,17 +181,8 @@ def update_job(
     db.commit()
     db.refresh(job)
 
-    return JobResponse(
-        id=str(job.id),
-        company=job.company,
-        position=job.position,
-        location=job.location,
-        employment_type=job.employment_type,
-        job_url=job.job_url,
-        description=job.description,
-        salary_min=job.salary_min,
-        salary_max=job.salary_max,
-    )
+    analysis = latest_analyses(db, current_user.id, [job.id]).get(job.id)
+    return job_response(job, analysis)
 
 @router.delete(
     "/{job_id}",

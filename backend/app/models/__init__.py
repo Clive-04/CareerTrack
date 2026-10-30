@@ -6,9 +6,11 @@ from app.models.resume import Resume
 from app.models.resume_skill import ResumeSkill
 from app.models.skill import Skill
 from app.models.user import User
+from app.models.analysis import ResumeAnalysis
 
 __all__ = [
     "User",
+    "ResumeAnalysis",
     "Job",
     "Resume",
     "Application",

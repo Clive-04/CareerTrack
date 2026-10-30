@@ -2,6 +2,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
@@ -15,6 +16,11 @@ router = APIRouter(
     prefix="/skills",
     tags=["Skills"],
 )
+
+def to_response(skill: Skill) -> SkillResponse:
+    return SkillResponse(id=str(skill.id), name=skill.name, category=skill.category,
+                         proficiency=skill.proficiency, years_experience=skill.years_experience,
+                         notes=skill.notes)
 
 
 @router.post(
@@ -37,7 +43,7 @@ def create_skill(
 
     existing_skill = (
         db.query(Skill)
-        .filter(Skill.name.ilike(name))
+        .filter(Skill.user_id == current_user.id, func.lower(Skill.name) == name.lower())
         .first()
     )
 
@@ -47,7 +53,8 @@ def create_skill(
             detail="A skill with this name already exists",
         )
 
-    skill = Skill(name=name)
+    skill = Skill(user_id=current_user.id, name=name, category=skill_data.category, proficiency=skill_data.proficiency,
+                  years_experience=skill_data.years_experience, notes=skill_data.notes)
     db.add(skill)
 
     try:
@@ -61,10 +68,7 @@ def create_skill(
 
     db.refresh(skill)
 
-    return SkillResponse(
-        id=str(skill.id),
-        name=skill.name,
-    )
+    return to_response(skill)
 
 @router.get(
     "",
@@ -74,18 +78,15 @@ def get_skills(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    skills = db.query(Skill).order_by(Skill.name.asc()).all()
+    skills = db.query(Skill).filter(Skill.user_id == current_user.id).order_by(Skill.name.asc()).all()
 
     return [
-        SkillResponse(
-            id=str(skill.id),
-            name=skill.name,
-        )
+        to_response(skill)
         for skill in skills
     ]
 
 @router.get(
-    "/{skill.py}",
+    "/{skill_id}",
     response_model=SkillResponse,
 )
 def get_skill(
@@ -103,7 +104,7 @@ def get_skill(
             detail="Invalid skill ID",
         )
 
-    skill = db.query(Skill).filter(Skill.id == skill_uuid).first()
+    skill = db.query(Skill).filter(Skill.id == skill_uuid, Skill.user_id == current_user.id).first()
 
     if skill is None:
         raise HTTPException(
@@ -111,10 +112,7 @@ def get_skill(
             detail="Skill not found",
         )
 
-    return SkillResponse(
-        id=str(skill.id),
-        name=skill.name,
-    )
+    return to_response(skill)
 
 @router.patch(
     "/{skill_id}",
@@ -134,7 +132,7 @@ def update_skill(
             detail="Invalid skill ID",
         )
 
-    skill = db.query(Skill).filter(Skill.id == skill_uuid).first()
+    skill = db.query(Skill).filter(Skill.id == skill_uuid, Skill.user_id == current_user.id).first()
 
     if skill is None:
         raise HTTPException(
@@ -152,7 +150,7 @@ def update_skill(
 
     existing_skill = (
         db.query(Skill)
-        .filter(Skill.name.ilike(name), Skill.id != skill_uuid)
+        .filter(Skill.user_id == current_user.id, func.lower(Skill.name) == name.lower(), Skill.id != skill_uuid)
         .first()
     )
 
@@ -163,6 +161,10 @@ def update_skill(
         )
 
     skill.name = name
+    update_data = skill_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if field != "name":
+            setattr(skill, field, value)
 
     try:
         db.commit()
@@ -175,10 +177,7 @@ def update_skill(
 
     db.refresh(skill)
 
-    return SkillResponse(
-        id=str(skill.id),
-        name=skill.name,
-    )
+    return to_response(skill)
 
 @router.delete(
     "/{skill_id}",
@@ -197,7 +196,7 @@ def delete_skill(
             detail="Invalid skill ID",
         )
 
-    skill = db.query(Skill).filter(Skill.id == skill_uuid).first()
+    skill = db.query(Skill).filter(Skill.id == skill_uuid, Skill.user_id == current_user.id).first()
 
     if skill is None:
         raise HTTPException(
