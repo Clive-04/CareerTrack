@@ -16,56 +16,14 @@ import {
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
-
-type Resume = {
-  id: number;
-  name: string;
-  targetRole: string;
-  fileName: string;
-  updatedAt: string;
-  skills: string[];
-  isDefault: boolean;
-  notes: string;
-};
-
-const initialResumes: Resume[] = [
-  {
-    id: 1,
-    name: "Software Developer Resume",
-    targetRole: "Junior Software Engineer",
-    fileName: "clive_software_developer.pdf",
-    updatedAt: "2026-10-09",
-    skills: ["Python", "FastAPI", "SQL", "Git"],
-    isDefault: true,
-    notes: "Main resume for software development roles.",
-  },
-  {
-    id: 2,
-    name: "Frontend Developer Resume",
-    targetRole: "Frontend Developer",
-    fileName: "clive_frontend_resume.pdf",
-    updatedAt: "2026-10-05",
-    skills: ["React", "Next.js", "TypeScript", "Tailwind CSS"],
-    isDefault: false,
-    notes: "Emphasizes frontend projects and UI development.",
-  },
-  {
-    id: 3,
-    name: "IT Support Resume",
-    targetRole: "IT Support Associate",
-    fileName: "clive_it_support.pdf",
-    updatedAt: "2026-09-28",
-    skills: ["Troubleshooting", "Networking", "Windows"],
-    isDefault: false,
-    notes: "Focuses on technical support and networking.",
-  },
-];
+import { useResumes, type Resume } from "@/components/ResumesProvider";
+import { useSkills } from "@/components/SkillsProvider";
 
 const emptyForm = {
   name: "",
   targetRole: "",
   fileName: "",
-  skills: "",
+  skills: [] as string[],
   notes: "",
 };
 
@@ -80,14 +38,24 @@ function formatDate(date: string) {
 }
 
 export default function ResumesPage() {
-  const [resumes, setResumes] = useState<Resume[]>(initialResumes);
+  const { resumes, createResume, updateResume, setAsDefault, deleteResume, downloadResume, extractResume, isLoading, error: resumesError } = useResumes();
+  const [extractingId, setExtractingId] = useState<string | null>(null);
+  const { skills: availableSkills, isLoading: skillsLoading } = useSkills();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null);
+  const [skillsOpen, setSkillsOpen] = useState(false);
+  const [skillSearch, setSkillSearch] = useState("");
+
+  const filteredAvailableSkills = availableSkills.filter((skill) =>
+    skill.name.toLowerCase().includes(skillSearch.toLowerCase()),
+  );
 
   const roles = useMemo(() => {
     return Array.from(
@@ -115,6 +83,8 @@ export default function ResumesPage() {
     setForm(emptyForm);
     setSelectedFile(null);
     setMessage("");
+    setSkillsOpen(false);
+    setSkillSearch("");
     setShowModal(true);
   }
 
@@ -124,16 +94,19 @@ export default function ResumesPage() {
       name: resume.name,
       targetRole: resume.targetRole,
       fileName: resume.fileName,
-      skills: resume.skills.join(", "),
+      skills: resume.skills,
       notes: resume.notes,
     });
     setSelectedFile(null);
     setMessage("");
+    setSkillsOpen(false);
+    setSkillSearch("");
     setShowModal(true);
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (saving) return;
 
     if (!form.name.trim() || !form.targetRole.trim()) {
       setMessage(
@@ -146,46 +119,24 @@ export default function ResumesPage() {
       ? selectedFile.name
       : form.fileName.trim();
 
-    const skills = form.skills
-      .split(",")
-      .map((skill) => skill.trim())
-      .filter(Boolean);
-
-    if (editingId !== null) {
-      setResumes((current) =>
-        current.map((resume) =>
-          resume.id === editingId
-            ? {
-                ...resume,
-                name: form.name.trim(),
-                targetRole: form.targetRole.trim(),
-                fileName,
-                skills,
-                notes: form.notes.trim(),
-                updatedAt: new Date().toLocaleDateString("en-CA"),
-              }
-            : resume,
-        ),
-      );
-    } else {
-      if (!selectedFile) {
-        setMessage("Please select a resume file before adding it.");
-        return;
-      }
-
-      const newResume: Resume = {
-        id: Date.now(),
-        name: form.name.trim(),
-        targetRole: form.targetRole.trim(),
-        fileName: selectedFile.name,
-        updatedAt: new Date().toLocaleDateString("en-CA"),
-        skills,
-        isDefault: resumes.length === 0,
-        notes: form.notes.trim(),
-      };
-
-      setResumes((current) => [...current, newResume]);
+    if (editingId === null && !selectedFile) {
+      setMessage("Please select a resume file before adding it.");
+      return;
     }
+
+    setSaving(true);
+    setMessage("");
+    try {
+      const resumeData = { name: form.name.trim(), targetRole: form.targetRole.trim(), fileName, file: selectedFile ?? undefined, skills: form.skills, notes: form.notes.trim() };
+      if (editingId !== null) await updateResume(editingId, resumeData);
+      else await createResume(resumeData);
+    } catch (requestError) {
+      setMessage(requestError instanceof Error ? requestError.message : "Unable to save resume.");
+      return;
+    } finally {
+      setSaving(false);
+    }
+
 
     setShowModal(false);
     setEditingId(null);
@@ -194,56 +145,21 @@ export default function ResumesPage() {
     setMessage("");
   }
 
-  function setAsDefault(id: number) {
-    setResumes((current) =>
-      current.map((resume) => ({
-        ...resume,
-        isDefault: resume.id === id,
-      })),
-    );
+  async function confirmDeleteResume() { if (!resumeToDelete) return; try { await deleteResume(resumeToDelete.id); setResumeToDelete(null); } catch (e) { setMessage(e instanceof Error ? e.message : "Unable to delete resume."); } }
+
+  async function downloadResumeInfo(resume: Resume) {
+    setMessage("");
+    try { await downloadResume(resume); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Unable to download resume."); }
   }
 
-  function deleteResume(id: number) {
-    const resume = resumes.find((item) => item.id === id);
-
-    if (!resume) return;
-
-    if (
-      window.confirm(
-        `Delete "${resume.name}" from your resume library?`,
-      )
-    ) {
-      setResumes((current) => {
-        const remaining = current.filter((item) => item.id !== id);
-
-        if (resume.isDefault && remaining.length > 0) {
-          remaining[0] = { ...remaining[0], isDefault: true };
-        }
-
-        return remaining;
-      });
-    }
-  }
-
-  function downloadResumeInfo(resume: Resume) {
-    const content = [
-      `Resume: ${resume.name}`,
-      `Target Role: ${resume.targetRole}`,
-      `File: ${resume.fileName}`,
-      `Last Updated: ${resume.updatedAt}`,
-      `Skills: ${resume.skills.join(", ")}`,
-      `Notes: ${resume.notes}`,
-    ].join("\n");
-
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = `${resume.name.replace(/[^a-z0-9]/gi, "_")}_details.txt`;
-    link.click();
-
-    URL.revokeObjectURL(url);
+  async function handleExtract(id: string) {
+    if (extractingId) return;
+    setExtractingId(id);
+    setMessage("");
+    try { await extractResume(id); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Unable to extract resume text."); }
+    finally { setExtractingId(null); }
   }
 
   const inputClass =
@@ -267,6 +183,9 @@ export default function ResumesPage() {
             </button>
           }
         />
+        {message && !showModal && <p role="alert" className="text-sm text-red-600">{message}</p>}
+        {isLoading && <p className="text-sm text-gray-500">Loading resumes...</p>}
+        {resumesError && <p role="alert" className="text-sm text-red-600">{resumesError}</p>}
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -399,9 +318,28 @@ export default function ResumesPage() {
                       className="shrink-0 text-gray-400"
                     />
                     <span className="truncate text-xs text-gray-600">
-                      {resume.fileName}
+                      {resume.fileName}{!resume.hasFile && " (file not uploaded)"}
                     </span>
                   </div>
+
+                  {resume.hasFile && (
+                    <div className="mt-3 text-sm" aria-live="polite">
+                      {resume.extractionStatus === "ready" ? (
+                        <p className="text-green-700">Text extracted — ready for analysis.</p>
+                      ) : (
+                        <>
+                          <p className="text-amber-700">
+                            {resume.extractionStatus === "unavailable"
+                              ? "No readable text could be extracted. The file may be scanned, password-protected, damaged, or too complex. Upload a text-based PDF or DOCX through Edit."
+                              : "This file has not been checked for readable text yet."}
+                          </p>
+                          <button type="button" disabled={extractingId !== null} onClick={() => handleExtract(resume.id)} className="mt-2 font-medium text-blue-600 hover:underline disabled:opacity-50">
+                            {extractingId === resume.id ? "Extracting..." : resume.extractionStatus === "unavailable" ? "Retry extraction" : "Extract text"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mt-4">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -449,8 +387,9 @@ export default function ResumesPage() {
                     <button
                       type="button"
                       onClick={() => downloadResumeInfo(resume)}
-                      title="Download resume details"
-                      aria-label={`Download details for ${resume.name}`}
+                      disabled={!resume.hasFile}
+                      title={resume.hasFile ? "Download resume" : "Edit this resume to upload its file"}
+                      aria-label={`Download ${resume.name}`}
                       className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50"
                     >
                       <Download size={17} />
@@ -469,7 +408,7 @@ export default function ResumesPage() {
 
                     <button
                       type="button"
-                      onClick={() => deleteResume(resume.id)}
+                      onClick={() => setResumeToDelete(resume)}
                       title="Delete resume"
                       aria-label={`Delete ${resume.name}`}
                       className="rounded-lg border border-gray-200 p-2 text-gray-500 transition hover:bg-red-50 hover:text-red-600"
@@ -503,6 +442,7 @@ export default function ResumesPage() {
 
               <button
                 type="button"
+                disabled={saving}
                 onClick={() => setShowModal(false)}
                 aria-label="Close form"
                 className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
@@ -569,14 +509,14 @@ export default function ResumesPage() {
 
                     <input
                       type="file"
-                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       className="hidden"
                       required={editingId === null}
                       onChange={(e) => {
                         const file = e.target.files?.[0] ?? null;
 
-                        if (file && file.size > 10 * 1024 * 1024) {
-                          setMessage("The file must be 10 MB or smaller.");
+                        if (file && (!/\.(pdf|docx)$/i.test(file.name) || file.size === 0 || file.size > 10 * 1024 * 1024)) {
+                          setMessage("Choose a non-empty PDF or DOCX file, 10 MB or smaller.");
                           e.target.value = "";
                           setSelectedFile(null);
                           return;
@@ -589,8 +529,7 @@ export default function ResumesPage() {
                   </label>
 
                   <p className="mt-2 text-xs text-gray-400">
-                    Maximum file size: 10 MB. Files are not uploaded to a
-                    server yet.
+                    PDF or DOCX, up to 10 MB. Your file stays private. Text is extracted locally; scanned documents need a text-based replacement.
                   </p>
                 </div>
 
@@ -598,14 +537,80 @@ export default function ResumesPage() {
                   <label className="mb-1.5 block text-sm font-medium">
                     Skills
                   </label>
-                  <input
-                    value={form.skills}
-                    onChange={(e) =>
-                      setForm({ ...form, skills: e.target.value })
-                    }
-                    placeholder="Separate skills with commas, e.g. Python, SQL, Git"
-                    className={inputClass}
-                  />
+                  {skillsLoading ? (
+                    <p className="text-sm text-gray-500">Loading your skills...</p>
+                  ) : availableSkills.length === 0 ? (
+                    <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+                      Add skills from the Skills page before assigning them to a resume.
+                    </p>
+                  ) : (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setSkillsOpen((open) => !open)}
+                        className="flex min-h-11 w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left text-sm text-gray-700 outline-none transition hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      >
+                        <span className="flex min-w-0 flex-wrap gap-2">
+                          {form.skills.length > 0 ? (
+                            form.skills.map((skill) => (
+                              <span key={skill} className="break-words rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                                {skill}
+                              </span>
+                            ))
+                          ) : "Select skills"}
+                        </span>
+                        <span className="text-gray-400">{skillsOpen ? "▲" : "▼"}</span>
+                      </button>
+
+                      {skillsOpen && (
+                        <div className="absolute z-10 mt-2 w-full rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
+                          <div className="relative">
+                            <Search
+                              size={16}
+                              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                            />
+                            <input
+                              autoFocus
+                              value={skillSearch}
+                              onChange={(event) => setSkillSearch(event.target.value)}
+                              placeholder="Search skills..."
+                              className="w-full rounded-md border border-gray-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500"
+                            />
+                          </div>
+
+                          <div className="mt-2 max-h-44 overflow-y-auto">
+                            {filteredAvailableSkills.length === 0 ? (
+                              <p className="p-3 text-sm text-gray-500">No matching skills.</p>
+                            ) : (
+                              filteredAvailableSkills.map((skill) => {
+                                const selected = form.skills.includes(skill.name);
+
+                                return (
+                                  <button
+                                    key={skill.id}
+                                    type="button"
+                                    onClick={() =>
+                                      setForm({
+                                        ...form,
+                                        skills: selected
+                                          ? form.skills.filter((name) => name !== skill.name)
+                                          : [...form.skills, skill.name],
+                                      })
+                                    }
+                                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-blue-50"
+                                  >
+                                    <span>{skill.name}</span>
+                                    {selected && <span className="font-semibold text-blue-600">✓</span>}
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                    </div>
+                  )}
                 </div>
 
                 <div className="sm:col-span-2">
@@ -633,7 +638,8 @@ export default function ResumesPage() {
               <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  disabled={saving}
+                onClick={() => setShowModal(false)}
                   className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
                 >
                   Cancel
@@ -641,12 +647,27 @@ export default function ResumesPage() {
 
                 <button
                   type="submit"
+                  disabled={saving}
                   className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
                 >
-                  {editingId !== null ? "Save Changes" : "Add Resume"}
+                  {saving ? "Saving and reading resume..." : editingId !== null ? "Save Changes" : "Add Resume"}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {resumeToDelete && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-gray-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600"><Trash2 size={22} /></div>
+            <h2 className="mt-4 text-lg font-bold text-gray-900">Delete resume?</h2>
+            <p className="mt-2 text-sm text-gray-500">Delete &quot;{resumeToDelete.name}&quot; from your resume library?</p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+              <button type="button" onClick={() => setResumeToDelete(null)} className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button type="button" onClick={confirmDeleteResume} className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">Delete resume</button>
+            </div>
           </div>
         </div>
       )}

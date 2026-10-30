@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Bell, ChevronDown, Menu } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Menu } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
 
 type TopNavbarProps = {
   mobileMenuOpen: boolean;
@@ -10,7 +11,7 @@ type TopNavbarProps = {
 
 const pageNames: Record<string, string> = {
   "/": "Dashboard",
-  "/jobs": "Jobs",
+  "/jobs": "Saved Jobs",
   "/applications": "Applications",
   "/interviews": "Interviews",
   "/resumes": "Resumes",
@@ -23,6 +24,13 @@ export default function TopNavbar({
 }: TopNavbarProps) {
   const pathname = usePathname();
   const activePage = pageNames[pathname] ?? "Dashboard";
+  const { user, logout } = useAuth();
+
+  if (!user) return null;
+
+  const initials = user
+    ? `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase()
+    : "";
 
   return (
     <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-8">
@@ -60,14 +68,24 @@ export default function TopNavbar({
 
         <div className="hidden items-center gap-2 border-l border-slate-200 pl-4 sm:flex">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
-            CB
+            {initials}
           </div>
 
-          <span className="text-sm font-medium text-slate-800">
-            My Account
+          <span className="max-w-32 truncate text-sm font-medium text-slate-800">
+            {user.first_name} {user.last_name}
           </span>
 
           <ChevronDown size={16} className="text-slate-400" />
+
+          <button
+            type="button"
+            onClick={logout}
+            aria-label="Log out"
+            title="Log out"
+            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+          >
+            <LogOut size={17} />
+          </button>
         </div>
       </div>
     </header>
