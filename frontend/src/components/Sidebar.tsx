@@ -14,10 +14,11 @@ import {
   LogOut,
   UserRound,
 } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
 
 const navigationItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Jobs", href: "/jobs", icon: BriefcaseBusiness },
+  { label: "Saved Jobs", href: "/jobs", icon: BriefcaseBusiness },
   { label: "Applications", href: "/applications", icon: ClipboardList },
   { label: "Interviews", href: "/interviews", icon: CalendarDays },
   { label: "Resumes", href: "/resumes", icon: FileText },
@@ -34,6 +35,9 @@ export default function Sidebar({
   setMobileMenuOpen,
 }: SidebarProps) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
+
+  if (!user) return null;
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -133,16 +137,18 @@ export default function Sidebar({
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">Your Profile</p>
-              <p className="truncate text-xs text-slate-400">Job Seeker</p>
+              <p className="truncate text-sm font-semibold">
+                {user.first_name} {user.last_name}
+              </p>
+              <p className="truncate text-xs text-slate-400">{user.email}</p>
             </div>
 
             <button
               type="button"
               aria-label="Log out"
-              title="Log out (not connected yet)"
-              disabled
-              className="rounded-md p-2 text-slate-400 opacity-60"
+              title="Log out"
+              onClick={logout}
+              className="rounded-md p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
             >
               <LogOut size={17} />
             </button>

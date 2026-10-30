@@ -18,84 +18,12 @@ import {
 } from "lucide-react";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
 import PageHeader from "@/components/PageHeader";
-
-type Proficiency = "Beginner" | "Intermediate" | "Advanced" | "Expert";
-
-type SkillCategory =
-  | "Programming"
-  | "Frameworks"
-  | "Databases"
-  | "Tools"
-  | "Soft Skills"
-  | "Other";
-
-type Skill = {
-  id: number;
-  name: string;
-  category: SkillCategory;
-  proficiency: Proficiency;
-  yearsExperience: number;
-  notes: string;
-};
-
-const initialSkills: Skill[] = [
-  {
-    id: 1,
-    name: "Python",
-    category: "Programming",
-    proficiency: "Intermediate",
-    yearsExperience: 2,
-    notes: "Used for backend development and scripting.",
-  },
-  {
-    id: 2,
-    name: "TypeScript",
-    category: "Programming",
-    proficiency: "Intermediate",
-    yearsExperience: 1,
-    notes: "Used in frontend development.",
-  },
-  {
-    id: 3,
-    name: "React",
-    category: "Frameworks",
-    proficiency: "Intermediate",
-    yearsExperience: 1,
-    notes: "Used to build interactive user interfaces.",
-  },
-  {
-    id: 4,
-    name: "FastAPI",
-    category: "Frameworks",
-    proficiency: "Beginner",
-    yearsExperience: 1,
-    notes: "Used to develop REST APIs.",
-  },
-  {
-    id: 5,
-    name: "PostgreSQL",
-    category: "Databases",
-    proficiency: "Intermediate",
-    yearsExperience: 1,
-    notes: "Database design and SQL queries.",
-  },
-  {
-    id: 6,
-    name: "Git",
-    category: "Tools",
-    proficiency: "Intermediate",
-    yearsExperience: 2,
-    notes: "Version control and collaboration.",
-  },
-  {
-    id: 7,
-    name: "Problem Solving",
-    category: "Soft Skills",
-    proficiency: "Advanced",
-    yearsExperience: 3,
-    notes: "Breaking down problems into manageable tasks.",
-  },
-];
+import {
+  useSkills,
+  type Proficiency,
+  type Skill,
+  type SkillCategory,
+} from "@/components/SkillsProvider";
 
 const categories: SkillCategory[] = [
   "Programming",
@@ -122,14 +50,15 @@ const emptyForm = {
 };
 
 export default function SkillsPage() {
-  const [skills, setSkills] = useState<Skill[]>(initialSkills);
+  const { skills, createSkill, updateSkill, deleteSkill: removeSkill, isLoading, error: skillsError } = useSkills();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [proficiencyFilter, setProficiencyFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
+  const [skillToDelete, setSkillToDelete] = useState<Skill | null>(null);
 
   const filteredSkills = useMemo(() => {
     return skills.filter((skill) => {
@@ -182,7 +111,7 @@ export default function SkillsPage() {
     setShowModal(true);
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const name = form.name.trim();
@@ -212,20 +141,12 @@ export default function SkillsPage() {
       notes: form.notes.trim(),
     };
 
-    if (editingId !== null) {
-      setSkills((current) =>
-        current.map((skill) =>
-          skill.id === editingId ? { ...skill, ...skillData } : skill,
-        ),
-      );
-    } else {
-      setSkills((current) => [
-        ...current,
-        {
-          id: Date.now(),
-          ...skillData,
-        },
-      ]);
+    try {
+      if (editingId !== null) await updateSkill(editingId, skillData);
+      else await createSkill(skillData);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to save skill.");
+      return;
     }
 
     setError("");
@@ -234,15 +155,7 @@ export default function SkillsPage() {
     setForm(emptyForm);
   }
 
-  function deleteSkill(id: number) {
-    const skill = skills.find((item) => item.id === id);
-
-    if (!skill) return;
-
-    if (window.confirm(`Delete the skill "${skill.name}"?`)) {
-      setSkills((current) => current.filter((item) => item.id !== id));
-    }
-  }
+  async function confirmDeleteSkill() { if (!skillToDelete) return; try { await removeSkill(skillToDelete.id); setSkillToDelete(null); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to delete skill."); } }
 
   const inputClass =
     "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
@@ -307,6 +220,8 @@ export default function SkillsPage() {
             </button>
           }
         />
+        {isLoading && <p className="text-sm text-gray-500">Loading skills...</p>}
+        {skillsError && <p role="alert" className="text-sm text-red-600">{skillsError}</p>}
       </div>
 
       <div className="space-y-6 p-5 sm:p-8">
@@ -489,7 +404,7 @@ export default function SkillsPage() {
                       </button>
 
                       <button
-                        onClick={() => deleteSkill(skill.id)}
+                        onClick={() => setSkillToDelete(skill)}
                         aria-label={`Delete ${skill.name}`}
                         className="rounded-lg border border-gray-200 p-2 text-gray-500 transition hover:bg-red-50 hover:text-red-600"
                       >
@@ -530,7 +445,11 @@ export default function SkillsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5 p-6">
+            <form
+              noValidate
+              onSubmit={handleSubmit}
+              className="space-y-5 p-6"
+            >
               <div>
                 <label className="mb-1.5 block text-sm font-medium">
                   Skill Name *
@@ -651,6 +570,19 @@ export default function SkillsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {skillToDelete && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-gray-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600"><Trash2 size={22} /></div>
+            <h2 className="mt-4 text-lg font-bold text-gray-900">Delete skill?</h2>
+            <p className="mt-2 text-sm text-gray-500">Delete &quot;{skillToDelete.name}&quot; from your skills?</p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+              <button type="button" onClick={() => setSkillToDelete(null)} className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button type="button" onClick={confirmDeleteSkill} className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">Delete skill</button>
+            </div>
           </div>
         </div>
       )}

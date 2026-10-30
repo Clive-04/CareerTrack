@@ -15,61 +15,16 @@ import {
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
-
-type InterviewStatus = "Scheduled" | "Completed" | "Cancelled";
-type InterviewType = "Video" | "Phone" | "On-site";
-
-type Interview = {
-  id: number;
-  company: string;
-  position: string;
-  date: string;
-  time: string;
-  type: InterviewType;
-  location: string;
-  status: InterviewStatus;
-  notes: string;
-};
-
-const initialInterviews: Interview[] = [
-  {
-    id: 1,
-    company: "Microsoft",
-    position: "Frontend Developer",
-    date: "2026-10-13",
-    time: "10:00",
-    type: "Video",
-    location: "Microsoft Teams",
-    status: "Scheduled",
-    notes: "Prepare portfolio and React projects.",
-  },
-  {
-    id: 2,
-    company: "Google",
-    position: "Junior Software Engineer",
-    date: "2026-10-15",
-    time: "14:00",
-    type: "Video",
-    location: "Google Meet",
-    status: "Scheduled",
-    notes: "Review data structures and algorithms.",
-  },
-  {
-    id: 3,
-    company: "Accenture",
-    position: "Associate Software Engineer",
-    date: "2026-10-08",
-    time: "09:30",
-    type: "Phone",
-    location: "Phone call",
-    status: "Completed",
-    notes: "Initial HR screening.",
-  },
-];
+import { useApplications } from "@/components/ApplicationsProvider";
+import {
+  useInterviews,
+  type Interview,
+  type InterviewStatus,
+  type InterviewType,
+} from "@/components/InterviewsProvider";
 
 const emptyForm = {
-  company: "",
-  position: "",
+  applicationId: "",
   date: "",
   time: "",
   type: "Video" as InterviewType,
@@ -102,14 +57,25 @@ function formatTime(time: string) {
 }
 
 export default function InterviewsPage() {
-  const [interviews, setInterviews] =
-    useState<Interview[]>(initialInterviews);
+  const {
+    interviews,
+    createInterview,
+    updateInterview,
+    updateInterviewStatus,
+    deleteInterview,
+    isLoading: interviewsLoading,
+    error: interviewsError,
+  } = useInterviews();
+  const { applications, isLoading: applicationsLoading } = useApplications();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
+  const [interviewToDelete, setInterviewToDelete] = useState<Interview | null>(
+    null,
+  );
 
   const today = new Date().toLocaleDateString("en-CA");
 
@@ -146,7 +112,7 @@ export default function InterviewsPage() {
   function openAddModal() {
     setError("");
     setEditingId(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, applicationId: applications[0]?.id ?? "" });
     setShowModal(true);
   }
 
@@ -154,8 +120,7 @@ export default function InterviewsPage() {
     setError("");
     setEditingId(interview.id);
     setForm({
-      company: interview.company,
-      position: interview.position,
+      applicationId: interview.applicationId,
       date: interview.date,
       time: interview.time,
       type: interview.type,
@@ -173,61 +138,69 @@ export default function InterviewsPage() {
     setError("");
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const company = form.company.trim();
-    const position = form.position.trim();
-
-    if (!company || !position) {
-      setError(
-        "Company and position are required and cannot contain only spaces.",
-      );
+    if (!form.applicationId) {
+      setError("Select an application before scheduling an interview.");
       return;
     }
 
-    setError("");
+    if (!form.date || !form.time) {
+      setError("Interview date and time are required.");
+      return;
+    }
 
     const interviewData = {
-      ...form,
-      company,
-      position,
+      applicationId: form.applicationId,
+      date: form.date,
+      time: form.time,
+      type: form.type,
+      status: form.status,
       location: form.location.trim(),
       notes: form.notes.trim(),
     };
 
-    if (editingId !== null) {
-      setInterviews((current) =>
-        current.map((interview) =>
-          interview.id === editingId
-            ? { ...interview, ...interviewData }
-            : interview,
-        ),
+    try {
+      setError("");
+      if (editingId !== null) {
+        await updateInterview(editingId, interviewData);
+      } else {
+        await createInterview(interviewData);
+      }
+      closeModal();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to save interview.",
       );
-    } else {
-      const newInterview: Interview = {
-        id: Date.now(),
-        ...interviewData,
-      };
-
-      setInterviews((current) => [...current, newInterview]);
     }
-
-    closeModal();
   }
 
-  function updateStatus(id: number, status: InterviewStatus) {
-    setInterviews((current) =>
-      current.map((interview) =>
-        interview.id === id ? { ...interview, status } : interview,
-      ),
-    );
+  async function updateStatus(id: string, status: InterviewStatus) {
+    try {
+      await updateInterviewStatus(id, status);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to update interview status.",
+      );
+    }
   }
 
-  function deleteInterview(id: number) {
-    if (window.confirm("Are you sure you want to delete this interview?")) {
-      setInterviews((current) =>
-        current.filter((interview) => interview.id !== id),
+  async function confirmDeleteInterview() {
+    if (!interviewToDelete) return;
+
+    try {
+      await deleteInterview(interviewToDelete.id);
+      setInterviewToDelete(null);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to delete interview.",
       );
     }
   }
@@ -253,6 +226,15 @@ export default function InterviewsPage() {
             </button>
           }
         />
+
+        {(interviewsLoading || applicationsLoading) && (
+          <p className="text-sm text-gray-500">Loading interviews...</p>
+        )}
+        {interviewsError && (
+          <p role="alert" className="text-sm text-red-600">
+            {interviewsError}
+          </p>
+        )}
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
@@ -458,7 +440,7 @@ export default function InterviewsPage() {
 
                     <button
                       type="button"
-                      onClick={() => deleteInterview(interview.id)}
+                      onClick={() => setInterviewToDelete(interview)}
                       aria-label={`Delete ${interview.company} interview`}
                       title="Delete interview"
                       className="rounded-lg border border-red-200 p-2 text-red-500 transition hover:bg-red-50 hover:text-red-700"
@@ -500,36 +482,36 @@ export default function InterviewsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5 p-6">
+            <form
+              noValidate
+              onSubmit={handleSubmit}
+              className="space-y-5 p-6"
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-sm font-medium">
-                    Company *
+                    Application *
                   </label>
-                  <input
+                  <select
                     required
-                    value={form.company}
+                    disabled={editingId !== null}
+                    value={form.applicationId}
                     onChange={(e) =>
-                      setForm({ ...form, company: e.target.value })
+                      setForm({ ...form, applicationId: e.target.value })
                     }
-                    placeholder="e.g. Google"
                     className={inputClass}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium">
-                    Position *
-                  </label>
-                  <input
-                    required
-                    value={form.position}
-                    onChange={(e) =>
-                      setForm({ ...form, position: e.target.value })
-                    }
-                    placeholder="e.g. Software Engineer"
-                    className={inputClass}
-                  />
+                  >
+                    <option value="">
+                      {applications.length === 0
+                        ? "No applications available"
+                        : "Select an application"}
+                    </option>
+                    {applications.map((application) => (
+                      <option key={application.id} value={application.id}>
+                        {application.company} — {application.position}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -638,6 +620,12 @@ export default function InterviewsPage() {
                 </p>
               )}
 
+              {applications.length === 0 && (
+                <p className="text-sm text-amber-700">
+                  Create an application before scheduling an interview.
+                </p>
+              )}
+
               <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
@@ -655,6 +643,42 @@ export default function InterviewsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {interviewToDelete && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-gray-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+              <Trash2 size={22} />
+            </div>
+            <h2 className="mt-4 text-lg font-bold text-gray-900">
+              Delete interview?
+            </h2>
+            <p className="mt-2 text-sm text-gray-500">
+              This will permanently remove the interview for {" "}
+              <span className="font-medium text-gray-700">
+                {interviewToDelete.company}
+              </span>
+              .
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={() => setInterviewToDelete(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteInterview}
+                className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
+              >
+                Delete interview
+              </button>
+            </div>
           </div>
         </div>
       )}

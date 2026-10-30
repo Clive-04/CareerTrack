@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
 import {
@@ -11,7 +11,6 @@ import {
   MapPin,
   CalendarDays,
   X,
-  ChevronDown,
   Pencil,
   Trash2,
 } from "lucide-react";
@@ -20,8 +19,16 @@ import {
   type Application,
   type ApplicationStatus,
 } from "@/components/ApplicationsProvider";
+import { useJobs } from "@/components/JobsProvider";
+import { useResumes } from "@/components/ResumesProvider";
 
-type ApplicationForm = Omit<Application, "id">;
+type ApplicationForm = {
+  jobId: string;
+  dateApplied: string;
+  status: ApplicationStatus;
+  notes: string;
+  resumeId: string;
+};
 
 const statuses: ApplicationStatus[] = [
   "Applied",
@@ -40,12 +47,11 @@ const statusStyles: Record<ApplicationStatus, string> = {
 };
 
 const emptyForm: ApplicationForm = {
-  company: "",
-  position: "",
-  location: "",
+  jobId: "",
   dateApplied: "",
   status: "Applied",
   notes: "",
+  resumeId: "",
 };
 
 function getLocalDate() {
@@ -58,13 +64,49 @@ function getLocalDate() {
 }
 
 export default function ApplicationsPage() {
-  const { applications, setApplications } = useApplications();
+  const {
+    applications,
+    createApplication,
+    updateApplication,
+    deleteApplication,
+    isLoading: applicationsLoading,
+    error: applicationsError,
+  } = useApplications();
+  const { jobs, isLoading: jobsLoading } = useJobs();
+  const { resumes, isLoading: resumesLoading } = useResumes();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All statuses");
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ApplicationForm>(emptyForm);
+  const [applicationToDelete, setApplicationToDelete] =
+    useState<Application | null>(null);
+  const prefillHandled = useRef(false);
+
+  useEffect(() => {
+    if (prefillHandled.current || jobsLoading || resumesLoading) return;
+    prefillHandled.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const jobId = params.get("job") ?? "";
+    const resumeId = params.get("resume") ?? "";
+    if (!jobs.some((job) => job.id === jobId)) return;
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setEditingId(null);
+      setForm({
+        ...emptyForm,
+        jobId,
+        resumeId: resumes.some((resume) => resume.id === resumeId) ? resumeId : "",
+        dateApplied: getLocalDate(),
+      });
+      setError("");
+      setShowForm(true);
+      window.history.replaceState(null, "", "/applications");
+    });
+    return () => { active = false; };
+  }, [jobs, jobsLoading, resumes, resumesLoading]);
 
   const filteredApplications = applications.filter((application) => {
     const matchesSearch =
@@ -83,7 +125,9 @@ export default function ApplicationsPage() {
     setEditingId(null);
     setForm({
       ...emptyForm,
+      jobId: jobs[0]?.id ?? "",
       dateApplied: getLocalDate(),
+      resumeId: resumes.find((resume) => resume.isDefault)?.id ?? "",
     });
     setError("");
     setShowForm(true);
@@ -92,12 +136,11 @@ export default function ApplicationsPage() {
   function openEditApplication(application: Application) {
     setEditingId(application.id);
     setForm({
-      company: application.company,
-      position: application.position,
-      location: application.location,
+      jobId: application.jobId,
       dateApplied: application.dateApplied,
       status: application.status,
       notes: application.notes,
+      resumeId: application.resumeId,
     });
     setError("");
     setShowForm(true);
@@ -110,11 +153,11 @@ export default function ApplicationsPage() {
     setError("");
   }
 
-  function handleSaveApplication(event: FormEvent<HTMLFormElement>) {
+  async function handleSaveApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!form.company.trim() || !form.position.trim()) {
-      setError("Company and position are required.");
+    if (!form.jobId) {
+      setError("Select a saved job first.");
       return;
     }
 
@@ -124,29 +167,26 @@ export default function ApplicationsPage() {
     }
 
     const applicationData: ApplicationForm = {
-      company: form.company.trim(),
-      position: form.position.trim(),
-      location: form.location.trim() || "Not specified",
+      jobId: form.jobId,
       dateApplied: form.dateApplied,
       status: form.status,
       notes: form.notes.trim(),
+      resumeId: form.resumeId,
     };
 
-    if (editingId !== null) {
-      setApplications((current) =>
-        current.map((application) =>
-          application.id === editingId
-            ? { ...application, ...applicationData }
-            : application,
-        ),
+    try {
+      if (editingId !== null) {
+        await updateApplication(editingId, applicationData);
+      } else {
+        await createApplication(applicationData);
+      }
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to save this application.",
       );
-    } else {
-      const newApplication: Application = {
-        id: Date.now(),
-        ...applicationData,
-      };
-
-      setApplications((current) => [newApplication, ...current]);
+      return;
     }
 
     setSearch("");
@@ -154,28 +194,27 @@ export default function ApplicationsPage() {
     closeForm();
   }
 
-  function handleDeleteApplication(id: number) {
+  function handleDeleteApplication(id: string) {
     const application = applications.find((item) => item.id === id);
 
     if (!application) return;
 
-    const confirmed = window.confirm(
-      `Delete your application for "${application.position}" at ${application.company}?`,
-    );
-
-    if (!confirmed) return;
-
-    setApplications((current) => current.filter((item) => item.id !== id));
+    setApplicationToDelete(application);
   }
 
-  function updateStatus(id: number, status: ApplicationStatus) {
-    setApplications((current) =>
-      current.map((application) =>
-        application.id === id
-          ? { ...application, status }
-          : application,
-      ),
-    );
+  async function confirmDeleteApplication() {
+    if (!applicationToDelete) return;
+
+    try {
+      await deleteApplication(applicationToDelete.id);
+      setApplicationToDelete(null);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to delete this application.",
+      );
+    }
   }
 
   const offerCount = applications.filter(
@@ -237,6 +276,18 @@ export default function ApplicationsPage() {
           />
         </section>
 
+        {(applicationsLoading || jobsLoading) && (
+          <p className="text-sm text-slate-500">
+            Loading your applications...
+          </p>
+        )}
+
+        {applicationsError && (
+          <p role="alert" className="text-sm font-medium text-red-600">
+            {applicationsError}
+          </p>
+        )}
+
         <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row">
             <label className="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3 py-3">
@@ -280,7 +331,7 @@ export default function ApplicationsPage() {
               Application History
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Update the status as you progress through each hiring process.
+                Manage each application and its current status in one place.
             </p>
           </div>
 
@@ -291,16 +342,13 @@ export default function ApplicationsPage() {
                   <th scope="col" className="px-6 py-4 font-semibold">
                     Company / Position
                   </th>
-                  <th scope="col" className="px-6 py-4 font-semibold">
+                  <th scope="col" className="px-6 py-4 text-center font-semibold">
                     Date Applied
                   </th>
-                  <th scope="col" className="px-6 py-4 font-semibold">
+                  <th scope="col" className="px-6 py-4 text-center font-semibold">
                     Status
                   </th>
-                  <th scope="col" className="px-6 py-4 font-semibold">
-                    Update Status
-                  </th>
-                  <th scope="col" className="px-6 py-4 font-semibold">
+                  <th scope="col" className="px-6 py-4 text-center font-semibold">
                     Actions
                   </th>
                 </tr>
@@ -329,6 +377,9 @@ export default function ApplicationsPage() {
                             <MapPin size={13} />
                             {application.location}
                           </p>
+                          <p className="mt-2 text-xs text-slate-500">
+                            Resume: {application.resumeName}
+                          </p>
 
                           {application.notes && (
                             <p className="mt-2 max-w-xs text-xs leading-5 text-slate-500">
@@ -339,7 +390,7 @@ export default function ApplicationsPage() {
                       </div>
                     </td>
 
-                    <td className="whitespace-nowrap px-6 py-5 text-sm text-slate-500">
+                    <td className="whitespace-nowrap px-6 py-5 text-center text-sm text-slate-500">
                       {new Date(
                         `${application.dateApplied}T12:00:00`,
                       ).toLocaleDateString("en-US", {
@@ -349,7 +400,7 @@ export default function ApplicationsPage() {
                       })}
                     </td>
 
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-5 text-center">
                       <span
                         className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${statusStyles[application.status]}`}
                       >
@@ -357,40 +408,13 @@ export default function ApplicationsPage() {
                       </span>
                     </td>
 
-                    <td className="px-6 py-5">
-                      <label className="relative flex items-center">
-                        <select
-                          aria-label={`Update status for ${application.position} at ${application.company}`}
-                          value={application.status}
-                          onChange={(event) =>
-                            updateStatus(
-                              application.id,
-                              event.target.value as ApplicationStatus,
-                            )
-                          }
-                          className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-8 text-sm outline-none focus:border-blue-500"
-                        >
-                          {statuses.map((status) => (
-                            <option key={status} value={status}>
-                              {status}
-                            </option>
-                          ))}
-                        </select>
-
-                        <ChevronDown
-                          size={15}
-                          className="pointer-events-none absolute right-2 text-slate-400"
-                        />
-                      </label>
-                    </td>
-
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-2">
+                    <td className="px-6 py-5 text-center">
+                      <div className="flex items-center justify-center gap-3">
                         <button
                           type="button"
                           onClick={() => openEditApplication(application)}
                           aria-label={`Edit application for ${application.position} at ${application.company}`}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                          className="inline-flex w-24 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
                         >
                           <Pencil size={15} />
                           Edit
@@ -402,7 +426,7 @@ export default function ApplicationsPage() {
                             handleDeleteApplication(application.id)
                           }
                           aria-label={`Delete application for ${application.position} at ${application.company}`}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                          className="inline-flex w-24 items-center justify-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
                         >
                           <Trash2 size={15} />
                           Delete
@@ -415,7 +439,7 @@ export default function ApplicationsPage() {
                 {filteredApplications.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={4}
                       className="px-6 py-14 text-center text-sm text-slate-500"
                     >
                       No applications found. Try another search or filter.
@@ -464,43 +488,32 @@ export default function ApplicationsPage() {
             </div>
 
             <form
+              noValidate
               onSubmit={handleSaveApplication}
               className="mt-6 space-y-4"
             >
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField label="Company *">
-                  <input
+                <FormField label="Saved Job *">
+                  <select
                     required
-                    value={form.company}
+                    disabled={editingId !== null}
+                    value={form.jobId}
                     onChange={(event) =>
-                      setForm({ ...form, company: event.target.value })
+                      setForm({ ...form, jobId: event.target.value })
                     }
-                    placeholder="e.g. Google"
                     className="form-input"
-                  />
-                </FormField>
-
-                <FormField label="Position *">
-                  <input
-                    required
-                    value={form.position}
-                    onChange={(event) =>
-                      setForm({ ...form, position: event.target.value })
-                    }
-                    placeholder="e.g. Software Engineer"
-                    className="form-input"
-                  />
-                </FormField>
-
-                <FormField label="Location">
-                  <input
-                    value={form.location}
-                    onChange={(event) =>
-                      setForm({ ...form, location: event.target.value })
-                    }
-                    placeholder="e.g. Manila or Remote"
-                    className="form-input"
-                  />
+                  >
+                    <option value="">
+                      {jobs.length === 0
+                        ? "No saved jobs available"
+                        : "Select a saved job"}
+                    </option>
+                    {jobs.map((job) => (
+                      <option key={job.id} value={job.id}>
+                        {job.company} — {job.position}
+                      </option>
+                    ))}
+                  </select>
                 </FormField>
 
                 <FormField label="Date Applied *">
@@ -533,6 +546,23 @@ export default function ApplicationsPage() {
                     ))}
                   </select>
                 </FormField>
+
+                <FormField label="Resume used (optional)">
+                  <select
+                    value={form.resumeId}
+                    onChange={(event) =>
+                      setForm({ ...form, resumeId: event.target.value })
+                    }
+                    className="form-input"
+                  >
+                    <option value="">No resume selected</option>
+                    {resumes.map((resume) => (
+                      <option key={resume.id} value={resume.id}>
+                        {resume.name}{resume.isDefault ? " (Default)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
               </div>
 
               <FormField label="Notes (optional)">
@@ -550,6 +580,12 @@ export default function ApplicationsPage() {
               {error && (
                 <p role="alert" className="text-sm font-medium text-red-600">
                   {error}
+                </p>
+              )}
+
+              {jobs.length === 0 && (
+                <p className="text-sm text-slate-500">
+                  Add a job before creating an application.
                 </p>
               )}
 
@@ -572,6 +608,49 @@ export default function ApplicationsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {applicationToDelete && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-application-dialog-title"
+            className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl"
+          >
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
+              <Trash2 size={21} />
+            </div>
+
+            <h2
+              id="delete-application-dialog-title"
+              className="mt-5 text-lg font-bold text-slate-900"
+            >
+              Delete this application?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              Are you sure you want to delete your application for{" "}
+              {applicationToDelete.position} at {applicationToDelete.company}?
+            </p>
+
+            <div className="mt-6 flex flex-col-reverse justify-center gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setApplicationToDelete(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteApplication}
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+              >
+                Delete application
+              </button>
+            </div>
           </div>
         </div>
       )}

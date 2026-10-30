@@ -16,6 +16,8 @@ import {
   MapPin,
 } from "lucide-react";
 import { useApplications } from "@/components/ApplicationsProvider";
+import { useJobs } from "@/components/JobsProvider";
+import { useInterviews } from "@/components/InterviewsProvider";
 
 const statusStyles: Record<string, string> = {
   Applied: "bg-blue-50 text-blue-700",
@@ -29,6 +31,18 @@ export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const router = useRouter();
   const { applications: sharedApplications } = useApplications();
+  const { jobs } = useJobs();
+  const { interviews } = useInterviews();
+  const today = new Date().toLocaleDateString("en-CA");
+  const upcomingInterviews = interviews
+    .filter(
+      (interview) =>
+        interview.status === "Scheduled" && interview.date >= today,
+    )
+    .sort((a, b) =>
+      `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`),
+    )
+    .slice(0, 3);
 
   const companyColors: Record<string, string> = {
     Google: "bg-blue-100 text-blue-700",
@@ -40,7 +54,8 @@ export default function DashboardPage() {
   const applications = [...sharedApplications]
     .sort(
       (a, b) =>
-        b.dateApplied.localeCompare(a.dateApplied) || b.id - a.id,
+        b.dateApplied.localeCompare(a.dateApplied) ||
+        b.id.localeCompare(a.id),
     )
     .map((application) => ({
       ...application,
@@ -91,14 +106,14 @@ export default function DashboardPage() {
               />
               <SummaryCard
                 title="Interviews"
-                value="3"
+                value={String(interviews.length)}
                 note="Keep preparing"
                 icon={CalendarDays}
                 iconStyle="bg-purple-50 text-purple-600"
               />
               <SummaryCard
                 title="Jobs Saved"
-                value="5"
+                value={String(jobs.length)}
                 note="Opportunities collected"
                 icon={BriefcaseBusiness}
                 iconStyle="bg-amber-50 text-amber-600"
@@ -221,18 +236,39 @@ export default function DashboardPage() {
                       <Clock3 size={20} />
                     </div>
                   </div>
-                  <div className="mt-6 rounded-xl border border-dashed border-slate-200 px-4 py-7 text-center">
-                    <CalendarDays
-                      size={28}
-                      className="mx-auto text-slate-300"
-                    />
-                    <p className="mt-3 text-sm font-semibold text-slate-700">
-                      No upcoming interviews
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Your scheduled interviews will appear here.
-                    </p>
-                  </div>
+                  {upcomingInterviews.length === 0 ? (
+                    <div className="mt-6 rounded-xl border border-dashed border-slate-200 px-4 py-7 text-center">
+                      <CalendarDays
+                        size={28}
+                        className="mx-auto text-slate-300"
+                      />
+                      <p className="mt-3 text-sm font-semibold text-slate-700">
+                        No upcoming interviews
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        Your scheduled interviews will appear here.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-6 space-y-3">
+                      {upcomingInterviews.map((interview) => (
+                        <div
+                          key={interview.id}
+                          className="rounded-xl border border-slate-100 bg-slate-50/70 p-4"
+                        >
+                          <p className="font-semibold text-slate-800">
+                            {interview.position}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-600">
+                            {interview.company}
+                          </p>
+                          <p className="mt-2 text-xs text-slate-500">
+                            {formatDashboardDate(interview.date)} · {interview.time} · {interview.type}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <button
                     onClick={() => router.push("/interviews")}
                     className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700"
@@ -265,6 +301,14 @@ export default function DashboardPage() {
           </div>
     </WorkspaceLayout>
   );
+}
+
+function formatDashboardDate(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function SummaryCard({
