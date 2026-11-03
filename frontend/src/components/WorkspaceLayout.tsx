@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import TopNavbar from "@/components/TopNavbar";
 import { useAuth } from "@/components/AuthProvider";
@@ -15,6 +15,7 @@ export default function WorkspaceLayout({
 }: WorkspaceLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isLoading } = useAuth();
 
   useEffect(() => {
@@ -25,26 +26,31 @@ export default function WorkspaceLayout({
 
   if (isLoading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F5F7FB]">
-        <p className="text-sm text-slate-500">Checking your session...</p>
+      <div className="app-shell flex min-h-screen items-center justify-center p-6">
+        <div className="app-surface flex items-center gap-3 px-5 py-4">
+          <span className="app-spinner" aria-hidden="true" />
+          <p className="text-sm font-medium text-slate-600">Checking your session...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F7FB] text-slate-800">
+    <div className="app-shell min-h-screen text-slate-800">
       <Sidebar
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
       />
 
-      <main className="min-h-screen lg:ml-64">
+      <main className="min-h-screen lg:ml-72">
         <TopNavbar
           mobileMenuOpen={mobileMenuOpen}
           setMobileMenuOpen={setMobileMenuOpen}
         />
 
-        {children}
+        <div key={pathname} className="app-page-enter">
+          {children}
+        </div>
       </main>
     </div>
   );

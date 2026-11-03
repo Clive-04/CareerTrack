@@ -16,26 +16,24 @@ export default function PageHeader({
   action,
 }: PageHeaderProps) {
   return (
-    <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-      <div>
+    <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+      <div className="max-w-3xl">
         {eyebrow && (
-            <p className="text-sm font-medium text-blue-600">
-                {eyebrow}
-            </p>
+          <p className="app-eyebrow">{eyebrow}</p>
         )}
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+        <h1 className={`${eyebrow ? "mt-3" : ""} text-3xl font-bold tracking-[-0.035em] text-slate-950 sm:text-4xl`}>
           {title}
         </h1>
 
         {description && (
-          <p className="mt-2 text-sm leading-6 text-slate-500 sm:text-base">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
             {description}
           </p>
         )}
       </div>
 
       {action && (
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
           {action}
         </div>
       )}
