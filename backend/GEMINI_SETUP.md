@@ -4,7 +4,7 @@ Add these settings to your existing `backend/.env` (keep your database and JWT s
 
 ```dotenv
 GEMINI_API_KEY=your_key_here
-GEMINI_MODEL=gemini-3.8-flash
+GEMINI_MODEL=gemini-3.5-flash-lite
 ```
 
 Get your key from https://aistudio.google.com/apikey. Do not commit the key or put it in a `NEXT_PUBLIC_` variable. Run `alembic upgrade head` for the analysis history table, then restart Uvicorn after changing settings. No extra Python package is needed for this integration.

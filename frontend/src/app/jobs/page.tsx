@@ -387,8 +387,8 @@ export default function JobsPage() {
                     Added {job.dateAdded}
                   </p>
                   {job.latestAnalysisScore !== null && (
-                    <p className="mt-2 text-sm font-semibold text-violet-700">
-                      Latest AI match: {job.latestAnalysisScore}/100
+                    <p className={`mt-2 text-sm font-semibold ${job.latestAnalysisIsStale ? "text-amber-700" : "text-violet-700"}`}>
+                      {job.latestAnalysisIsStale ? "Previous" : "Latest"} AI match: {job.latestAnalysisScore}/100
                     </p>
                   )}
                 </div>
@@ -398,9 +398,19 @@ export default function JobsPage() {
                 {job.description}
               </p>
 
+              {job.latestAnalysisIsStale && (
+                <div role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  <p className="font-semibold">AI analysis outdated</p>
+                  <ul className="mt-1 list-disc space-y-1 pl-5">
+                    {job.latestAnalysisStaleReasons.map((reason) => <li key={reason}>{reason}</li>)}
+                  </ul>
+                  <p className="mt-2 text-xs">Run the analysis again before relying on the previous score.</p>
+                </div>
+              )}
+
               <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
                 <button type="button" onClick={() => { setAnalysisView("new"); setAnalysisJob(job); }} className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">
-                  <Sparkles size={16} aria-hidden="true" />Analyze Resume with AI
+                  <Sparkles size={16} aria-hidden="true" />{job.latestAnalysisIsStale ? "Analyze Again" : "Analyze Resume with AI"}
                 </button>
                 <button type="button" onClick={() => { setAnalysisView("history"); setAnalysisJob(job); }} className="rounded-lg border border-violet-200 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50">Analysis History</button>
                 <button
@@ -667,7 +677,7 @@ export default function JobsPage() {
           box-shadow: 0 0 0 3px rgb(59 130 246 / 12%);
         }
       `}</style>
-      {analysisJob && <ResumeAnalysisDialog key={analysisJob.id} job={analysisJob} initialView={analysisView} onAnalysisChange={refreshJobs} onClose={() => setAnalysisJob(null)} />}
+      {analysisJob && <ResumeAnalysisDialog key={analysisJob.id} job={jobs.find((job) => job.id === analysisJob.id) ?? analysisJob} initialView={analysisView} onAnalysisChange={refreshJobs} onClose={() => setAnalysisJob(null)} />}
     </WorkspaceLayout>
   );
 }

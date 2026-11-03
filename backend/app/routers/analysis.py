@@ -10,6 +10,7 @@ from app.core.dependencies import get_current_user
 from app.core.gemini import analyze
 from app.core.config import settings
 from app.core.job_description import validate_job_description
+from app.core.analysis_freshness import source_fingerprints
 from app.models.analysis import ResumeAnalysis
 from app.db.session import get_db
 from app.models.job import Job
@@ -85,7 +86,10 @@ def analyze_resume(job_id: UUID, data: AnalysisRequest, response: Response,
                          resume_name=resume.name, job_title=job.position, company=job.company,
                          model=settings.GEMINI_MODEL)
     result = AnalysisResult.model_validate(analyze(data.resume_text.strip(), data.job_description.strip()))
-    row.result = result.model_dump()
+    row.result = {
+        **result.model_dump(),
+        **source_fingerprints(job.description, resume.parsed_text),
+    }
     db.add(row)
     try:
         db.commit()
@@ -97,7 +101,8 @@ def analyze_resume(job_id: UUID, data: AnalysisRequest, response: Response,
 
 
 def saved_response(row: ResumeAnalysis) -> SavedAnalysis:
-    return SavedAnalysis(**row.result, id=row.id, job_id=row.job_id, resume_id=row.resume_id,
+    public_result = {field: row.result[field] for field in AnalysisResult.model_fields}
+    return SavedAnalysis(**public_result, id=row.id, job_id=row.job_id, resume_id=row.resume_id,
                          resume_name=row.resume_name, job_title=row.job_title, company=row.company,
                          model=row.model, created_at=row.created_at)
 

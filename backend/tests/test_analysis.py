@@ -1,6 +1,7 @@
 import io
 import json
 import unittest
+from datetime import datetime
 from unittest.mock import patch
 from urllib.error import HTTPError
 
@@ -58,13 +59,42 @@ class GeminiTest(unittest.TestCase):
                     gemini.analyze(RESUME, JOB)
                 self.assertEqual(error.exception.status_code, code)
 
+    def test_transient_provider_error_retries_then_succeeds(self):
+        failures = [HTTPError("https://example.test", 503, "overloaded", {}, None) for _ in range(2)]
+        with patch.object(gemini, "urlopen", side_effect=[*failures, self.response()]) as send, patch.object(gemini, "sleep") as wait:
+            result = gemini.analyze(RESUME, JOB)
+        self.assertEqual(result.score, 75)
+        self.assertEqual(send.call_count, 3)
+        self.assertEqual([item.args[0] for item in wait.call_args_list], [1, 2])
+
+    def test_overload_after_retries_has_specific_message(self):
+        failures = [HTTPError("https://example.test", 503, "overloaded", {}, None) for _ in range(3)]
+        with patch.object(gemini, "urlopen", side_effect=failures) as send, patch.object(gemini, "sleep") as wait:
+            with self.assertRaises(HTTPException) as error:
+                gemini.analyze(RESUME, JOB)
+        self.assertEqual(error.exception.status_code, 503)
+        self.assertIn("overloaded", error.exception.detail.lower())
+        self.assertEqual(send.call_count, 3)
+        self.assertEqual(wait.call_count, 2)
+
     def test_bad_or_unsupported_response(self):
         unsupported = {**RESULT, "matches": [{"requirement": "Python", "evidence": "Invented qualification"}]}
-        for response in [self.response({**RESULT, "score": 500}), self.response(unsupported), self.response(finish="MAX_TOKENS"), io.BytesIO(b"not json")]:
+        for response in [self.response({**RESULT, "score": 500}), self.response(finish="MAX_TOKENS"), io.BytesIO(b"not json")]:
             with patch.object(gemini, "urlopen", return_value=response):
                 with self.assertRaises(HTTPException) as error:
                     gemini.analyze(RESUME, JOB)
                 self.assertEqual(error.exception.status_code, 502)
+
+        with patch.object(gemini, "urlopen", return_value=self.response(unsupported)):
+            result = gemini.analyze(RESUME, JOB)
+        self.assertEqual(result.matches, [])
+
+    def test_evidence_normalizes_unicode_punctuation(self):
+        resume = "Built developer-facing APIs — with Python."
+        result_data = {**RESULT, "matches": [{"requirement": "APIs", "evidence": "APIs - with Python"}]}
+        with patch.object(gemini, "urlopen", return_value=self.response(result_data)):
+            result = gemini.analyze(resume, JOB)
+        self.assertEqual(len(result.matches), 1)
 
 
 class AnalysisRouteTest(unittest.TestCase):
@@ -189,6 +219,41 @@ class AnalysisRouteTest(unittest.TestCase):
         self.assertEqual(result.latest_analysis_score, 75)
         self.assertEqual(result.latest_analysis_resume_id, str(self.resume.id))
         self.assertEqual(result.latest_analysis_created_at, saved.created_at)
+        self.assertFalse(result.latest_analysis_is_stale)
+        self.assertEqual(result.latest_analysis_stale_reasons, [])
+
+    def test_job_description_change_marks_analysis_stale(self):
+        self.saved()
+        self.job.description = JOB + " The responsibilities have changed."
+        self.db.commit()
+        result = jobs.get_jobs(None, None, None, self.owner, self.db)[0]
+        self.assertTrue(result.latest_analysis_is_stale)
+        self.assertIn("job description changed", result.latest_analysis_stale_reasons[0].lower())
+
+    def test_resume_change_and_deletion_mark_analysis_stale(self):
+        self.saved()
+        self.resume.parsed_text = RESUME + " Added current project details."
+        self.db.commit()
+        result = jobs.get_jobs(None, None, None, self.owner, self.db)[0]
+        self.assertTrue(result.latest_analysis_is_stale)
+        self.assertTrue(any("resume content changed" in reason.lower() for reason in result.latest_analysis_stale_reasons))
+
+        self.db.delete(self.resume)
+        self.db.commit()
+        result = jobs.get_jobs(None, None, None, self.owner, self.db)[0]
+        self.assertTrue(any("resume was deleted" in reason.lower() for reason in result.latest_analysis_stale_reasons))
+
+    def test_reanalysis_restores_fresh_status(self):
+        previous = self.saved()
+        self.db.get(ResumeAnalysis, previous.id).created_at = datetime(2000, 1, 1)
+        self.resume.parsed_text = RESUME + " Added current project details."
+        self.db.commit()
+        self.assertTrue(jobs.get_jobs(None, None, None, self.owner, self.db)[0].latest_analysis_is_stale)
+
+        analysis._last_requests.clear()
+        self.saved()
+        result = jobs.get_jobs(None, None, None, self.owner, self.db)[0]
+        self.assertFalse(result.latest_analysis_is_stale)
 
     def test_application_resume_must_belong_to_user(self):
         foreign_resume = Resume(

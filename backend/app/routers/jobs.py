@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
 from app.db.session import get_db
-from app.models import Job, ResumeAnalysis, User
+from app.models import Job, Resume, ResumeAnalysis, User
+from app.core.analysis_freshness import stale_reasons
 from app.schemas.job import JobCreate, JobResponse, JobUpdate
 from app.core.job_description import validate_job_description
 
@@ -33,8 +34,16 @@ def latest_analyses(db: Session, user_id, job_ids) -> dict:
     return latest
 
 
-def job_response(job: Job, analysis: ResumeAnalysis | None = None) -> JobResponse:
+def resumes_for_analyses(db: Session, analyses: dict) -> dict:
+    resume_ids = {row.resume_id for row in analyses.values() if row.resume_id}
+    if not resume_ids:
+        return {}
+    return {resume.id: resume for resume in db.scalars(select(Resume).where(Resume.id.in_(resume_ids))).all()}
+
+
+def job_response(job: Job, analysis: ResumeAnalysis | None = None, resume: Resume | None = None) -> JobResponse:
     score = analysis.result.get("score") if analysis else None
+    reasons = stale_reasons(job, analysis, resume)
     return JobResponse(
         id=str(job.id),
         company=job.company,
@@ -49,6 +58,8 @@ def job_response(job: Job, analysis: ResumeAnalysis | None = None) -> JobRespons
         latest_analysis_score=int(score) if isinstance(score, (int, float)) else None,
         latest_analysis_resume_id=str(analysis.resume_id) if analysis and analysis.resume_id else None,
         latest_analysis_created_at=analysis.created_at if analysis else None,
+        latest_analysis_is_stale=bool(reasons) if analysis else None,
+        latest_analysis_stale_reasons=reasons,
     )
 
 
@@ -119,7 +130,8 @@ def get_jobs(
     jobs = db.scalars(query).all()
 
     analyses = latest_analyses(db, current_user.id, (job.id for job in jobs))
-    return [job_response(job, analyses.get(job.id)) for job in jobs]
+    resumes = resumes_for_analyses(db, analyses)
+    return [job_response(job, analyses.get(job.id), resumes.get(analyses[job.id].resume_id) if job.id in analyses else None) for job in jobs]
 
 @router.get(
     "/{job_id}",
@@ -144,7 +156,8 @@ def get_job(
         )
 
     analysis = latest_analyses(db, current_user.id, [job.id]).get(job.id)
-    return job_response(job, analysis)
+    resumes = resumes_for_analyses(db, {job.id: analysis} if analysis else {})
+    return job_response(job, analysis, resumes.get(analysis.resume_id) if analysis else None)
 
 @router.patch(
     "/{job_id}",
@@ -182,7 +195,8 @@ def update_job(
     db.refresh(job)
 
     analysis = latest_analyses(db, current_user.id, [job.id]).get(job.id)
-    return job_response(job, analysis)
+    resumes = resumes_for_analyses(db, {job.id: analysis} if analysis else {})
+    return job_response(job, analysis, resumes.get(analysis.resume_id) if analysis else None)
 
 @router.delete(
     "/{job_id}",

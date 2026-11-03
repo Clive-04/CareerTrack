@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { LoaderCircle, Sparkles, X } from "lucide-react";
+import { LoaderCircle, Sparkles, Trash2, X } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useResumes } from "@/components/ResumesProvider";
 import type { Job } from "@/components/JobsProvider";
@@ -124,14 +124,20 @@ export default function ResumeAnalysisDialog({ job, onClose, onAnalysisChange, i
             </div>
           </article>)}
         </section>}
-        {deleteTarget && <section role="alertdialog" aria-labelledby="delete-analysis-title" className="rounded-xl border border-red-200 bg-red-50 p-5 text-center">
-          <h3 id="delete-analysis-title" className="font-semibold">Delete this saved analysis?</h3>
-          <p className="mt-2 text-sm">The result for {deleteTarget.resume_name} will be permanently removed. Your resume and saved job will remain.</p>
-          <div className="mt-4 flex justify-center gap-3">
-            <button type="button" disabled={deleting} onClick={() => setDeleteTarget(null)} className="rounded-lg border bg-white px-4 py-2">Cancel</button>
-            <button type="button" disabled={deleting} onClick={confirmDelete} className="rounded-lg bg-red-600 px-4 py-2 text-white">{deleting ? "Deleting..." : "Delete analysis"}</button>
-          </div>
-        </section>}
+        {deleteTarget && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <section role="alertdialog" aria-modal="true" aria-labelledby="delete-analysis-title" aria-describedby="delete-analysis-description" className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
+              <Trash2 size={21} aria-hidden="true" />
+            </div>
+            <h3 id="delete-analysis-title" className="mt-5 text-lg font-bold">Delete this saved analysis?</h3>
+            <p id="delete-analysis-description" className="mt-2 text-sm leading-6 text-slate-600">The result for {deleteTarget.resume_name} will be permanently removed. Your resume and saved job will remain.</p>
+            {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+            <div className="mt-6 flex flex-col-reverse justify-center gap-3 sm:flex-row">
+              <button type="button" disabled={deleting} onClick={() => { setDeleteTarget(null); setError(""); }} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Cancel</button>
+              <button type="button" disabled={deleting} onClick={confirmDelete} className="rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white hover:bg-red-700 disabled:opacity-50">{deleting ? "Deleting..." : "Delete analysis"}</button>
+            </div>
+          </section>
+        </div>}
         {busy === "analysis" && (
           <div role="status" aria-live="polite" className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-violet-100 bg-violet-50/60 px-6 py-10 text-center">
             <LoaderCircle size={40} aria-hidden="true" className="motion-safe:animate-spin text-violet-600" />
@@ -179,7 +185,7 @@ export default function ResumeAnalysisDialog({ job, onClose, onAnalysisChange, i
           </>}
         </>}
 
-        {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        {error && !deleteTarget && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
         {result && <div className="space-y-5" aria-live="polite">
           <h3 className="flex items-center gap-2 text-lg font-semibold"><Sparkles size={20} aria-hidden="true" className="text-violet-600" />Your AI analysis results</h3>
@@ -197,8 +203,13 @@ export default function ResumeAnalysisDialog({ job, onClose, onAnalysisChange, i
           <section><h3 className="font-semibold">Requirements not evidenced</h3><p className="mt-1 text-xs text-slate-500">These may be missing from the text, not necessarily from your experience.</p><ul className="mt-2 list-disc space-y-2 pl-5">{result.gaps.map((gap, index) => <li key={index}>{gap}</li>)}</ul></section>
           <section><h3 className="font-semibold">Suggested improvements</h3><ul className="mt-2 list-disc space-y-2 pl-5">{result.suggestions.map((suggestion, index) => <li key={index}>{suggestion}</li>)}</ul></section>
           <p className="text-sm text-slate-500">Review AI suggestions for accuracy. Only add claims you can support. This result is saved privately in your history.</p>
+          {job.latestAnalysisIsStale && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-semibold">This AI analysis is outdated.</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5">{job.latestAnalysisStaleReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+            <p className="mt-2">Analyze again before applying for the most accurate comparison. You can still continue with this resume if you have reviewed it yourself.</p>
+          </div>}
           <div className="flex flex-wrap gap-3">
-            {result.resume_id && <Link href={`/applications?job=${encodeURIComponent(job.id)}&resume=${encodeURIComponent(result.resume_id)}`} className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700">Add application using this resume</Link>}
+            {result.resume_id && <Link href={`/applications?job=${encodeURIComponent(job.id)}&resume=${encodeURIComponent(result.resume_id)}`} className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700">{job.latestAnalysisIsStale ? "Continue with this resume" : "Add application using this resume"}</Link>}
             <button type="button" onClick={() => { setResult(null); setConsent(false); }} className="rounded-lg border px-4 py-2 font-medium">{view === "history" ? "Back to history" : "Review text again"}</button>
           </div>
         </div>}

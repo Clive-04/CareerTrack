@@ -22,6 +22,8 @@ export type ApiJob = {
   latest_analysis_score: number | null;
   latest_analysis_resume_id: string | null;
   latest_analysis_created_at: string | null;
+  latest_analysis_is_stale: boolean | null;
+  latest_analysis_stale_reasons: string[];
 };
 
 export type ApiApplication = {

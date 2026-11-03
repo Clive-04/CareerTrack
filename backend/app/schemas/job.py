@@ -42,3 +42,5 @@ class JobResponse(BaseModel):
     latest_analysis_score: int | None = None
     latest_analysis_resume_id: str | None = None
     latest_analysis_created_at: datetime | None = None
+    latest_analysis_is_stale: bool | None = None
+    latest_analysis_stale_reasons: list[str] = Field(default_factory=list)

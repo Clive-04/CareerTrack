@@ -29,6 +29,8 @@ export type Job = {
   latestAnalysisScore: number | null;
   latestAnalysisResumeId: string | null;
   latestAnalysisCreatedAt: string | null;
+  latestAnalysisIsStale: boolean;
+  latestAnalysisStaleReasons: string[];
 };
 
 export type JobInput = {
@@ -82,6 +84,8 @@ function mapApiJob(job: ApiJob): Job {
     latestAnalysisScore: job.latest_analysis_score ?? null,
     latestAnalysisResumeId: job.latest_analysis_resume_id ?? null,
     latestAnalysisCreatedAt: job.latest_analysis_created_at ?? null,
+    latestAnalysisIsStale: job.latest_analysis_is_stale ?? false,
+    latestAnalysisStaleReasons: job.latest_analysis_stale_reasons ?? [],
   };
 }
 

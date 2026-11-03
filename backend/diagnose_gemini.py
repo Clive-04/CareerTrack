@@ -4,6 +4,7 @@ import sys
 from unittest.mock import patch
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+from fastapi import HTTPException
 
 from app.core.config import settings
 from app.core import gemini
@@ -14,6 +15,17 @@ def main():
     print("Configured model:", settings.GEMINI_MODEL)
     print("API key present:", bool(key))
     if not key:
+        return
+    if "--validated-generation" in sys.argv:
+        try:
+            result = gemini.analyze(
+                "Fictional candidate has three years of Python development experience building SQL databases, REST APIs, and unit tests for web services.",
+                "Fictional role requires Python development, SQL database design, REST API implementation, automated unit testing, version control, documentation, debugging, secure coding, and collaboration with product designers and engineering teams.",
+            )
+            print("Validated generation accepted; score:", result.score)
+        except HTTPException as error:
+            print("Validated generation failed:", error.status_code, error.detail)
+            raise SystemExit(2)
         return
     request = Request(
         "https://generativelanguage.googleapis.com/v1beta/models/" + settings.GEMINI_MODEL,
