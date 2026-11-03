@@ -15,6 +15,17 @@ class UserRegister(BaseModel):
 
     _validate_password = field_validator("password")(validate_bcrypt_password)
 
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, value: str) -> str:
+        if not any(character.isupper() for character in value):
+            raise ValueError("Password must include an uppercase letter")
+        if not any(character.islower() for character in value):
+            raise ValueError("Password must include a lowercase letter")
+        if not any(not character.isalnum() and not character.isspace() for character in value):
+            raise ValueError("Password must include a special character")
+        return value
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=72)

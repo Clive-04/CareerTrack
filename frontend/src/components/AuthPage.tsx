@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import {
-  passwordByteLength,
   validateLogin,
   validateRegistration,
 } from "@/lib/authValidation";
@@ -43,7 +42,9 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
   const confirmationStarted = form.confirmPassword.length > 0;
   const passwordsMatch = confirmationStarted && form.password === form.confirmPassword;
   const passwordIsLongEnough = form.password.length >= 12;
-  const passwordFitsBcrypt = passwordByteLength(form.password) <= 72;
+  const passwordHasUppercase = /[A-Z]/u.test(form.password);
+  const passwordHasLowercase = /[a-z]/u.test(form.password);
+  const passwordHasSpecialCharacter = /[^A-Za-z0-9\s]/u.test(form.password);
 
   useEffect(() => {
     if (user) router.replace("/dashboard");
@@ -178,7 +179,9 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
                 <p className="text-xs font-semibold text-slate-600">Password requirements</p>
                 <div className="mt-2 space-y-1.5">
                   <Requirement met={passwordIsLongEnough} label="At least 12 characters" />
-                  <Requirement met={passwordFitsBcrypt} label="No more than 72 bytes" />
+                  <Requirement met={passwordHasUppercase} label="One uppercase letter" />
+                  <Requirement met={passwordHasLowercase} label="One lowercase letter" />
+                  <Requirement met={passwordHasSpecialCharacter} label="One special character" />
                 </div>
               </div>
             )}

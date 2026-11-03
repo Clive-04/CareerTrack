@@ -134,14 +134,14 @@ test("keeps the landing page public and protects the dashboard", async ({ page }
   await page.getByLabel("First name").fill("Clive");
   await page.getByLabel("Last name").fill("Tester");
   await page.getByLabel("Email").fill("clive@example.com");
-  await page.getByLabel("Password", { exact: true }).fill("correct-password");
+  await page.getByLabel("Password", { exact: true }).fill("Correct-password");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText("Please confirm your password.", { exact: true })).toBeVisible();
 
   await page.getByLabel("Confirm password").fill("different-password");
   await expect(page.getByLabel("Passwords do not match", { exact: true })).toBeVisible();
   await expect(page.getByText("Passwords do not match.", { exact: true })).toBeVisible();
-  await page.getByLabel("Confirm password").fill("correct-password");
+  await page.getByLabel("Confirm password").fill("Correct-password");
   await expect(page.getByLabel("Passwords match", { exact: true })).toBeVisible();
   await expect(page.getByText("Passwords match.", { exact: true })).toBeVisible();
 
@@ -160,10 +160,10 @@ test("registers a new user through the dedicated registration page", async ({ pa
   await page.getByLabel("First name").fill("Clive");
   await page.getByLabel("Last name").fill("Tester");
   await page.getByLabel("Email").fill("clive@example.com");
-  await page.getByLabel("Password", { exact: true }).fill("correct-password");
+  await page.getByLabel("Password", { exact: true }).fill("Correct-password");
   await page.getByRole("button", { name: "Show password" }).click();
   await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "text");
-  await page.getByLabel("Confirm password").fill("correct-password");
+  await page.getByLabel("Confirm password").fill("Correct-password");
   await page.getByRole("button", { name: "Create account" }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);

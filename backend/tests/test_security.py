@@ -55,10 +55,32 @@ class SecurityTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             UserRegister(
                 email="user@example.com",
-                password="a" * 73,
+                password="Aa!" + "a" * 70,
                 first_name="Test",
                 last_name="User",
             )
+
+        for weak_password in [
+            "lowercase-only!",
+            "UPPERCASE-ONLY!",
+            "NoSpecialCharacter",
+        ]:
+            with self.subTest(password=weak_password):
+                with self.assertRaises(ValidationError):
+                    UserRegister(
+                        email="user@example.com",
+                        password=weak_password,
+                        first_name="Test",
+                        last_name="User",
+                    )
+
+        user = UserRegister(
+            email="user@example.com",
+            password="Correct-password",
+            first_name="Test",
+            last_name="User",
+        )
+        self.assertEqual(user.password, "Correct-password")
 
 
 if __name__ == "__main__":
