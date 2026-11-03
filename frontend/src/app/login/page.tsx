@@ -1,32 +1,47 @@
 "use client";
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { BriefcaseBusiness } from "lucide-react";
+import Link from "next/link";
+import { Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, BriefcaseBusiness, CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<AuthenticationLoader />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading, login, register } = useAuth();
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(
+    () => searchParams.get("mode") === "register",
+  );
   const [form, setForm] = useState({
     email: "",
     password: "",
+    confirmPassword: "",
     firstName: "",
     lastName: "",
   });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const confirmationStarted = form.confirmPassword.length > 0;
+  const passwordsMatch = confirmationStarted && form.password === form.confirmPassword;
 
   useEffect(() => {
     if (user) {
-      router.replace("/");
+      router.replace("/dashboard");
     }
   }, [router, user]);
 
   function switchMode() {
     setIsRegistering((current) => !current);
-    setForm({ email: "", password: "", firstName: "", lastName: "" });
+    setForm({ email: "", password: "", confirmPassword: "", firstName: "", lastName: "" });
     setError("");
   }
 
@@ -53,6 +68,16 @@ export default function LoginPage() {
       return;
     }
 
+    if (isRegistering && !form.confirmPassword) {
+      setError("Please confirm your password.");
+      return;
+    }
+
+    if (isRegistering && form.password !== form.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -67,7 +92,7 @@ export default function LoginPage() {
         await login(form.email.trim(), form.password);
       }
 
-      router.replace("/");
+      router.replace("/dashboard");
     } catch (submissionError) {
       setError(
         submissionError instanceof Error
@@ -88,8 +113,34 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#F5F7FB] p-4">
-      <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(135deg,#eef2ff_0%,#f8fafc_48%,#ecfeff_100%)] p-4 sm:p-8">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[0.32]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgb(99 102 241 / 10%) 1px, transparent 1px), linear-gradient(90deg, rgb(99 102 241 / 10%) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+          maskImage: "linear-gradient(to bottom, black, transparent 82%)",
+        }}
+      />
+      <div aria-hidden="true" className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-indigo-300/35 blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-40 -right-28 h-[28rem] w-[28rem] rounded-full bg-cyan-300/30 blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute right-[12%] top-[18%] h-28 w-28 rotate-12 rounded-[2rem] border border-white/60 bg-white/25 shadow-xl backdrop-blur-sm" />
+      <div aria-hidden="true" className="pointer-events-none absolute bottom-[16%] left-[10%] h-20 w-20 -rotate-12 rounded-3xl border border-indigo-200/50 bg-indigo-100/25 shadow-lg backdrop-blur-sm" />
+
+      <section className="relative w-full max-w-md rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_28px_80px_rgb(30_41_59/16%)] backdrop-blur-xl sm:p-8">
+        <div
+          key={isRegistering ? "register" : "login"}
+          className={isRegistering ? "auth-mode-enter-forward" : "auth-mode-enter-back"}
+        >
+        <Link
+          href="/"
+          className="mb-6 inline-flex items-center gap-2 rounded-lg px-1 py-1 text-sm font-semibold text-slate-500 transition hover:text-indigo-600"
+        >
+          <ArrowLeft size={16} />
+          Back to home
+        </Link>
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#172B4D] text-white">
             <BriefcaseBusiness size={22} />
@@ -163,6 +214,53 @@ export default function LoginPage() {
             />
           </Field>
 
+          {isRegistering && (
+            <Field label="Confirm password">
+              <div className="relative">
+                <input
+                  aria-describedby={confirmationStarted ? "password-confirmation-status" : undefined}
+                  autoComplete="new-password"
+                  maxLength={72}
+                  required
+                  type="password"
+                  value={form.confirmPassword}
+                  onChange={(event) =>
+                    setForm({ ...form, confirmPassword: event.target.value })
+                  }
+                  className={`auth-input !pr-11 ${
+                    confirmationStarted
+                      ? passwordsMatch
+                        ? "!border-emerald-400"
+                        : "!border-red-400"
+                      : ""
+                  }`}
+                />
+                {confirmationStarted && (
+                  <span
+                    aria-label={passwordsMatch ? "Passwords match" : "Passwords do not match"}
+                    className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${
+                      passwordsMatch ? "text-emerald-500" : "text-red-500"
+                    }`}
+                  >
+                    {passwordsMatch ? <CheckCircle2 size={19} /> : <XCircle size={19} />}
+                  </span>
+                )}
+              </div>
+              {confirmationStarted && (
+                <span
+                  id="password-confirmation-status"
+                  role="status"
+                  aria-live="polite"
+                  className={`block text-xs font-medium ${
+                    passwordsMatch ? "text-emerald-600" : "text-red-600"
+                  }`}
+                >
+                  {passwordsMatch ? "Passwords match." : "Passwords do not match."}
+                </span>
+              )}
+            </Field>
+          )}
+
           {error && (
             <p role="alert" className="text-sm font-medium text-red-600">
               {error}
@@ -192,6 +290,7 @@ export default function LoginPage() {
             ? "Already have an account? Sign in"
             : "Need an account? Create one"}
         </button>
+        </div>
       </section>
 
       <style jsx global>{`
@@ -208,7 +307,55 @@ export default function LoginPage() {
           border-color: #3b82f6;
           box-shadow: 0 0 0 3px rgb(59 130 246 / 12%);
         }
+
+        @keyframes auth-mode-forward {
+          from {
+            opacity: 0;
+            transform: translateX(18px) scale(0.99);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+          }
+        }
+
+        @keyframes auth-mode-back {
+          from {
+            opacity: 0;
+            transform: translateX(-18px) scale(0.99);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+          }
+        }
+
+        .auth-mode-enter-forward {
+          animation: auth-mode-forward 550ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .auth-mode-enter-back {
+          animation: auth-mode-back 550ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .auth-mode-enter-forward,
+          .auth-mode-enter-back {
+            animation: none;
+          }
+        }
       `}</style>
+    </main>
+  );
+}
+
+function AuthenticationLoader() {
+  return (
+    <main className="app-shell flex min-h-screen items-center justify-center p-6">
+      <div className="app-surface flex items-center gap-3 px-5 py-4">
+        <span className="app-spinner" aria-hidden="true" />
+        <p className="text-sm font-medium text-slate-600">Checking your session...</p>
+      </div>
     </main>
   );
 }

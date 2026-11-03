@@ -104,8 +104,41 @@ async function mockCareerTrackApi(page: Page) {
   await page.route("http://127.0.0.1:8000/**", handleApiRoute);
 }
 
-test("redirects signed-out users to login", async ({ page }) => {
+test("keeps the landing page public and protects the dashboard", async ({ page }) => {
   const response = await page.goto("/");
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { name: /Organize your job search/ })).toBeVisible();
+  await page.getByRole("link", { name: "Create account", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/login\?mode=register$/);
+  await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
+  await expect(page.locator(".auth-mode-enter-forward")).toBeVisible();
+  await page.getByRole("button", { name: "Already have an account? Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await expect(page.locator(".auth-mode-enter-back")).toBeVisible();
+  await page.getByRole("button", { name: "Need an account? Create one" }).click();
+  await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
+  await expect(page.getByLabel("First name")).toBeVisible();
+  await expect(page.getByLabel("Last name")).toBeVisible();
+  await expect(page.getByLabel("Email")).toBeVisible();
+  await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Confirm password")).toBeVisible();
+
+  await page.getByLabel("First name").fill("Clive");
+  await page.getByLabel("Last name").fill("Tester");
+  await page.getByLabel("Email").fill("clive@example.com");
+  await page.getByLabel("Password", { exact: true }).fill("correct-password");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByText("Please confirm your password.", { exact: true })).toBeVisible();
+
+  await page.getByLabel("Confirm password").fill("different-password");
+  await expect(page.getByLabel("Passwords do not match", { exact: true })).toBeVisible();
+  await expect(page.getByText("Passwords do not match.", { exact: true })).toBeVisible();
+  await page.getByLabel("Confirm password").fill("correct-password");
+  await expect(page.getByLabel("Passwords match", { exact: true })).toBeVisible();
+  await expect(page.getByText("Passwords match.", { exact: true })).toBeVisible();
+
+  await page.goto("/dashboard");
 
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
@@ -121,10 +154,13 @@ test("signs in, loads dashboard data, and confirms logout", async ({ page }) => 
   await page.getByLabel("Password").fill("correct-password");
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { name: "Welcome back!" })).toBeVisible();
   await expect(page.getByText("Frontend Developer", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("88/100")).toBeVisible();
+
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/dashboard$/);
 
   await page.getByRole("complementary").getByRole("link", { name: "Saved Jobs" }).click();
   await page.getByRole("button", { name: "Save Job" }).click();
@@ -158,6 +194,6 @@ test("signs in, loads dashboard data, and confirms logout", async ({ page }) => 
   await logoutButton.click();
   await page.getByRole("dialog").getByRole("button", { name: "Log out" }).click();
 
-  await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { name: /Organize your job search/ })).toBeVisible();
 });

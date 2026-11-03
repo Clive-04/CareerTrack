@@ -10,7 +10,7 @@ type TopNavbarProps = {
 };
 
 const pageNames: Record<string, string> = {
-  "/": "Dashboard",
+  "/dashboard": "Dashboard",
   "/jobs": "Saved Jobs",
   "/applications": "Applications",
   "/interviews": "Interviews",

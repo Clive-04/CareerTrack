@@ -16,7 +16,7 @@ import {
 import { useAuth } from "@/components/AuthProvider";
 
 const navigationItems = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Saved Jobs", href: "/jobs", icon: BriefcaseBusiness },
   { label: "Applications", href: "/applications", icon: ClipboardList },
   { label: "Interviews", href: "/interviews", icon: CalendarDays },
@@ -39,8 +39,7 @@ export default function Sidebar({
   if (!user) return null;
 
   const initials = `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase();
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const isActive = (href: string) => pathname.startsWith(href);
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
@@ -63,7 +62,7 @@ export default function Sidebar({
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl" />
 
         <div className="relative flex h-20 items-center justify-between gap-3 border-b border-white/8 px-5">
-          <Link href="/" onClick={closeMobileMenu} className="group flex min-w-0 items-center gap-3">
+          <Link href="/dashboard" onClick={closeMobileMenu} className="group flex min-w-0 items-center gap-3">
             <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 shadow-lg shadow-indigo-950/35 transition group-hover:scale-[1.03]">
               <BriefcaseBusiness size={21} />
               <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-[#111827] bg-cyan-300" />

@@ -1,453 +1,272 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import PageHeader from "@/components/PageHeader";
-import WorkspaceLayout from "@/components/WorkspaceLayout";
 import {
-  BriefcaseBusiness,
-  FileText,
-  CalendarDays,
-  GraduationCap,
-  Search,
-  Plus,
-  Clock3,
-  CircleCheck,
-  MapPin,
-  Sparkles,
-  AlertTriangle,
   ArrowRight,
+  BarChart3,
+  BriefcaseBusiness,
+  CalendarCheck2,
+  Check,
+  FileSearch,
+  FileText,
+  LockKeyhole,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react";
-import { useApplications } from "@/components/ApplicationsProvider";
-import { useJobs } from "@/components/JobsProvider";
-import { useInterviews } from "@/components/InterviewsProvider";
-import { getAiDashboardInsights, getApplicationPipeline } from "@/lib/dashboardInsights";
+import { useAuth } from "@/components/AuthProvider";
 
-const statusStyles: Record<string, string> = {
-  Applied: "bg-blue-50 text-blue-700",
-  Interview: "bg-green-50 text-green-700",
-  "In Review": "bg-amber-50 text-amber-700",
-  Offer: "bg-green-50 text-green-700",
-  Rejected: "bg-red-50 text-red-700",
-};
+const features = [
+  {
+    icon: BriefcaseBusiness,
+    title: "Save every opportunity",
+    description: "Keep job details, links, salary information, and requirements together in one private workspace.",
+    style: "bg-indigo-50 text-indigo-600",
+  },
+  {
+    icon: BarChart3,
+    title: "Track your applications",
+    description: "Follow each application from saved to applied, interview, offer, or rejection without losing context.",
+    style: "bg-cyan-50 text-cyan-700",
+  },
+  {
+    icon: FileSearch,
+    title: "Compare with AI",
+    description: "Use Gemini to compare your selected resume with a detailed job description and identify useful improvements.",
+    style: "bg-violet-50 text-violet-600",
+  },
+  {
+    icon: CalendarCheck2,
+    title: "Prepare for interviews",
+    description: "Schedule interviews, record important details, and keep upcoming conversations visible.",
+    style: "bg-emerald-50 text-emerald-600",
+  },
+];
 
-export default function DashboardPage() {
-  const [search, setSearch] = useState("");
+const steps = [
+  ["01", "Build your private profile", "Add your skills and keep multiple resumes organized for different career goals."],
+  ["02", "Capture the opportunity", "Save a role with enough detail to make your application and AI comparison meaningful."],
+  ["03", "Move forward with clarity", "Track your progress, review your match, and prepare for the next stage."],
+];
+
+export default function LandingPage() {
   const router = useRouter();
-  const { applications: sharedApplications } = useApplications();
-  const { jobs } = useJobs();
-  const { interviews } = useInterviews();
-  const today = new Date().toLocaleDateString("en-CA");
-  const upcomingInterviews = interviews
-    .filter(
-      (interview) =>
-        interview.status === "Scheduled" && interview.date >= today,
-    )
-    .sort((a, b) =>
-      `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`),
-    )
-    .slice(0, 3);
+  const { user, isLoading } = useAuth();
 
-  const companyColors: Record<string, string> = {
-    Google: "bg-blue-100 text-blue-700",
-    Microsoft: "bg-sky-100 text-sky-700",
-    Accenture: "bg-purple-100 text-purple-700",
-    Canva: "bg-rose-100 text-rose-700",
-  };
+  useEffect(() => {
+    if (!isLoading && user) router.replace("/dashboard");
+  }, [isLoading, router, user]);
 
-  const applications = [...sharedApplications]
-    .sort(
-      (a, b) =>
-        b.dateApplied.localeCompare(a.dateApplied) ||
-        b.id.localeCompare(a.id),
-    )
-    .map((application) => ({
-      ...application,
-      initials: application.company.slice(0, 1).toUpperCase(),
-      color:
-        companyColors[application.company] ??
-        "bg-blue-100 text-blue-700",
-      date: new Date(
-        `${application.dateApplied}T12:00:00`,
-      ).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
-    }));
+  useEffect(() => {
+    const elements = document.querySelectorAll<HTMLElement>("[data-landing-reveal]");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.setAttribute("data-visible", "true");
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -48px" },
+    );
 
-  const filteredApplications = applications.filter((application) =>
-    `${application.company} ${application.position} ${application.status}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
-  const displayedApplications = filteredApplications.slice(0, 5);
-  const { freshAnalyses, outdatedAnalyses, strongestMatch, notAnalyzedCount } = getAiDashboardInsights(jobs);
-  const applicationPipeline = getApplicationPipeline(applications);
+    elements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, []);
 
-  return (
-    <WorkspaceLayout>
-      <div className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
-            <PageHeader
-              eyebrow="Your job search"
-              title="Welcome back!"
-              description="Here's an overview of your job search progress."
-              action={
-                <button
-                  onClick={() => router.push("/jobs")}
-                  className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:self-auto"
-                >
-                  <Plus size={18} />
-                  Add a job
-                </button>
-              }
-            />
-
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <SummaryCard
-                title="Total Applications"
-                value={String(applications.length)}
-                note="Applications tracked"
-                icon={FileText}
-                iconStyle="bg-blue-50 text-blue-600"
-              />
-              <SummaryCard
-                title="Interviews"
-                value={String(interviews.length)}
-                note="Keep preparing"
-                icon={CalendarDays}
-                iconStyle="bg-purple-50 text-purple-600"
-              />
-              <SummaryCard
-                title="Jobs Saved"
-                value={String(jobs.length)}
-                note="Opportunities collected"
-                icon={BriefcaseBusiness}
-                iconStyle="bg-amber-50 text-amber-600"
-              />
-              <SummaryCard
-                title="Offers Received"
-                value={String(
-                  applications.filter((application) => application.status === "Offer").length,
-                )}
-                note="A step toward your goal"
-                icon={CircleCheck}
-                iconStyle="bg-green-50 text-green-600"
-              />
-            </section>
-
-            <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 xl:col-span-2">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <div className="rounded-xl bg-violet-50 p-2.5 text-violet-600">
-                        <Sparkles size={20} />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-slate-900">AI Resume Insights</h2>
-                        <p className="mt-1 text-sm text-slate-500">Current comparisons across your saved jobs.</p>
-                      </div>
-                    </div>
-                  </div>
-                  <button type="button" onClick={() => router.push("/jobs")} className="text-left text-sm font-semibold text-blue-600 hover:text-blue-700">
-                    Manage analyses →
-                  </button>
-                </div>
-
-                <div className="mt-6 grid grid-cols-3 gap-3">
-                  <InsightMetric label="Fresh" value={freshAnalyses.length} style="bg-emerald-50 text-emerald-700" />
-                  <InsightMetric label="Outdated" value={outdatedAnalyses.length} style="bg-amber-50 text-amber-700" />
-                  <InsightMetric label="Not analyzed" value={notAnalyzedCount} style="bg-slate-100 text-slate-700" />
-                </div>
-
-                {strongestMatch ? (
-                  <div className="mt-5 flex flex-col justify-between gap-4 rounded-xl border border-violet-100 bg-violet-50/60 p-4 sm:flex-row sm:items-center">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wider text-violet-600">Strongest current match</p>
-                      <p className="mt-2 font-bold text-slate-900">{strongestMatch.position}</p>
-                      <p className="mt-1 text-sm text-slate-600">{strongestMatch.company}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <p className="text-2xl font-bold text-violet-700">{strongestMatch.latestAnalysisScore}/100</p>
-                      <button type="button" onClick={() => router.push(`/jobs?analysis=${encodeURIComponent(strongestMatch.id)}&view=history`)} className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-700">
-                        View <ArrowRight size={15} />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-5 rounded-xl border border-dashed border-slate-200 p-5 text-center">
-                    <p className="text-sm font-semibold text-slate-700">No current AI match yet</p>
-                    <p className="mt-1 text-xs text-slate-500">Analyze a resume against a saved job to see your strongest match.</p>
-                    <button type="button" onClick={() => router.push("/jobs")} className="mt-3 text-sm font-semibold text-blue-600">Analyze a resume →</button>
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-xl bg-amber-50 p-2.5 text-amber-600"><AlertTriangle size={20} /></div>
-                  <div>
-                    <h2 className="font-bold text-slate-900">Needs attention</h2>
-                    <p className="mt-1 text-xs text-slate-500">Outdated AI comparisons</p>
-                  </div>
-                </div>
-                {outdatedAnalyses.length ? (
-                  <div className="mt-5 space-y-3">
-                    {outdatedAnalyses.slice(0, 3).map((job) => (
-                      <div key={job.id} className="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
-                        <p className="text-sm font-semibold text-slate-800">{job.position}</p>
-                        <p className="mt-1 text-xs text-slate-500">{job.company} · Previous score {job.latestAnalysisScore}/100</p>
-                        <button type="button" onClick={() => router.push(`/jobs?analysis=${encodeURIComponent(job.id)}&view=new`)} className="mt-2 text-xs font-semibold text-amber-700 hover:text-amber-800">Analyze again →</button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">
-                    <p className="font-semibold">No outdated analyses</p>
-                    <p className="mt-1 text-xs leading-5">Your saved AI comparisons are current.</p>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 xl:col-span-2">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">
-                      Recent Applications
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Keep track of your latest opportunities.
-                    </p>
-                  </div>
-                  <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
-                    <Search size={17} className="text-slate-400" />
-                    <input
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Search applications"
-                      className="w-full min-w-0 bg-transparent text-sm outline-none sm:w-40"
-                    />
-                  </label>
-                </div>
-
-                <div className="mt-6 overflow-x-auto">
-                  <table className="w-full min-w-[600px] text-left">
-                    <thead>
-                      <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
-                        <th className="pb-3 pr-4 font-semibold">Company / Role</th>
-                        <th className="pb-3 pr-4 font-semibold">Date Applied</th>
-                        <th className="pb-3 pr-4 font-semibold">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedApplications.map((application) => (
-                        <tr
-                          key={application.id}
-                          className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70"
-                        >
-                          <td className="py-4 pr-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${application.color}`}
-                              >
-                                {application.initials}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-slate-800">
-                                  {application.company}
-                                </p>
-                                <p className="mt-1 text-xs text-slate-500">
-                                  {application.position}
-                                </p>
-                                <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
-                                  <MapPin size={12} />
-                                  {application.location}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 pr-4 text-sm text-slate-500">
-                            {application.date}
-                          </td>
-                          <td className="py-4 pr-4">
-                            <span
-                              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[application.status]}`}
-                            >
-                              {application.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                      {displayedApplications.length === 0 && (
-                        <tr>
-                          <td
-                            colSpan={3}
-                            className="py-10 text-center text-sm text-slate-500"
-                          >
-                            No applications match your search.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <button
-                  onClick={() => router.push("/applications")}
-                  className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700"
-                >
-                  View all applications →
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900">
-                        Upcoming Interviews
-                      </h3>
-                      <p className="mt-1 text-sm text-slate-500">
-                        Stay ready for your next step.
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-purple-50 p-3 text-purple-600">
-                      <Clock3 size={20} />
-                    </div>
-                  </div>
-                  {upcomingInterviews.length === 0 ? (
-                    <div className="mt-6 rounded-xl border border-dashed border-slate-200 px-4 py-7 text-center">
-                      <CalendarDays
-                        size={28}
-                        className="mx-auto text-slate-300"
-                      />
-                      <p className="mt-3 text-sm font-semibold text-slate-700">
-                        No upcoming interviews
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        Your scheduled interviews will appear here.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="mt-6 space-y-3">
-                      {upcomingInterviews.map((interview) => (
-                        <div
-                          key={interview.id}
-                          className="rounded-xl border border-slate-100 bg-slate-50/70 p-4"
-                        >
-                          <p className="font-semibold text-slate-800">
-                            {interview.position}
-                          </p>
-                          <p className="mt-1 text-sm text-slate-600">
-                            {interview.company}
-                          </p>
-                          <p className="mt-2 text-xs text-slate-500">
-                            {formatDashboardDate(interview.date)} · {interview.time} · {interview.type}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <button
-                    onClick={() => router.push("/interviews")}
-                    className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700"
-                  >
-                    Manage interviews →
-                  </button>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-                  <h3 className="text-lg font-bold text-slate-900">Application Pipeline</h3>
-                  <p className="mt-1 text-sm text-slate-500">Where your applications currently stand.</p>
-                  <div className="mt-5 space-y-4">
-                    {applicationPipeline.map(({ status, count, percentage }) => {
-                      return <div key={status}>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium text-slate-700">{status}</span>
-                          <span className="text-slate-500">{count}</span>
-                        </div>
-                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                          <div className="h-full rounded-full bg-blue-500" style={{ width: `${percentage}%` }} />
-                        </div>
-                      </div>;
-                    })}
-                  </div>
-                  <button type="button" onClick={() => router.push("/applications")} className="mt-5 text-sm font-semibold text-blue-600 hover:text-blue-700">View application pipeline →</button>
-                </div>
-
-                <div className="rounded-2xl bg-gradient-to-br from-[#172B4D] to-[#264B80] p-6 text-white">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
-                    <GraduationCap size={23} />
-                  </div>
-                  <h3 className="mt-4 text-lg font-bold">Ready for your next step?</h3>
-                  <p className="mt-2 text-sm leading-6 text-blue-100">
-                    Keep your resume updated and highlight the skills that match your target roles.
-                  </p>
-                  <button
-                    onClick={() => router.push("/resumes")}
-                    className="mt-5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#172B4D] transition hover:bg-blue-50"
-                  >
-                    Review my resumes
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            <footer className="border-t border-slate-200 py-5 text-center text-xs text-slate-400">
-              CareerTrack · Stay organized. Move forward.
-            </footer>
-          </div>
-    </WorkspaceLayout>
-  );
-}
-
-function formatDashboardDate(date: string) {
-  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function InsightMetric({ label, value, style }: { label: string; value: number; style: string }) {
-  return (
-    <div className={`rounded-xl p-3 text-center ${style}`}>
-      <p className="text-2xl font-bold">{value}</p>
-      <p className="mt-1 text-xs font-medium">{label}</p>
-    </div>
-  );
-}
-
-function SummaryCard({
-  title,
-  value,
-  note,
-  icon: Icon,
-  iconStyle,
-}: {
-  title: string;
-  value: string;
-  note: string;
-  icon: typeof FileText;
-  iconStyle: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
-            {value}
-          </p>
+  if (isLoading || user) {
+    return (
+      <main className="app-shell flex min-h-screen items-center justify-center p-6">
+        <div className="app-surface flex items-center gap-3 px-5 py-4">
+          <span className="app-spinner" aria-hidden="true" />
+          <p className="text-sm font-medium text-slate-600">Opening your workspace...</p>
         </div>
-        <div className={`rounded-xl p-3 ${iconStyle}`}>
-          <Icon size={21} />
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen overflow-hidden bg-[#f8f9fc] text-slate-900">
+      <header className="relative z-20 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8">
+          <Link href="/" className="flex items-center gap-3" aria-label="CareerTrack home">
+            <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-200">
+              <BriefcaseBusiness size={21} />
+              <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-cyan-400" />
+            </span>
+            <span>
+              <span className="block text-lg font-bold tracking-[-0.03em]">CareerTrack</span>
+              <span className="block text-[10px] font-semibold tracking-[0.17em] text-slate-400">PRIVATE CAREER WORKSPACE</span>
+            </span>
+          </Link>
+
+          <nav className="hidden items-center gap-8 text-sm font-medium text-slate-600 md:flex" aria-label="Public navigation">
+            <a href="#features" className="transition hover:text-indigo-600">Features</a>
+            <a href="#how-it-works" className="transition hover:text-indigo-600">How it works</a>
+            <a href="#privacy" className="transition hover:text-indigo-600">Privacy</a>
+          </nav>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link href="/login" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:px-4">
+              Log in
+            </Link>
+            <Link href="/login?mode=register" className="app-button-primary !min-h-0 !px-4 !py-2.5">
+              <span className="hidden sm:inline">Create account</span>
+              <span className="sm:hidden">Join</span>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <section className="relative">
+        <div aria-hidden="true" className="absolute -left-40 top-20 h-96 w-96 rounded-full bg-indigo-200/35 blur-3xl" />
+        <div aria-hidden="true" className="absolute -right-44 top-2 h-[30rem] w-[30rem] rounded-full bg-cyan-100/60 blur-3xl" />
+        <div className="relative mx-auto grid max-w-7xl gap-14 px-5 pb-24 pt-20 sm:px-8 sm:pt-28 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:pb-32">
+          <div data-landing-reveal className="max-w-2xl">
+            <div className="app-eyebrow">Your search, organized</div>
+            <h1 className="mt-6 text-5xl font-bold leading-[1.04] tracking-[-0.055em] text-slate-950 sm:text-6xl lg:text-7xl">
+              Organize your job search. <span className="bg-gradient-to-r from-indigo-600 to-cyan-600 bg-clip-text text-transparent">Move with confidence.</span>
+            </h1>
+            <p className="mt-7 max-w-xl text-lg leading-8 text-slate-600">
+              CareerTrack is a private workspace for saved jobs, applications, resumes, skills, interviews, and AI-assisted resume comparisons.
+            </p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Link href="/login?mode=register" className="app-button-primary px-6 py-3.5 text-base">
+                Start tracking for free <ArrowRight size={18} />
+              </Link>
+              <a href="#how-it-works" className="app-button-secondary px-6 py-3.5 text-base">
+                See how it works
+              </a>
+            </div>
+            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-500">
+              {["Personal workspace", "Private resume storage", "Clear application pipeline"].map((item) => (
+                <span key={item} className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><Check size={13} strokeWidth={3} /></span>
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <DashboardPreview />
+        </div>
+      </section>
+
+      <section id="features" className="border-y border-slate-200/80 bg-white py-24 sm:py-28">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8">
+          <div data-landing-reveal className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-indigo-600">Everything in one place</p>
+            <h2 className="mt-4 text-3xl font-bold tracking-[-0.04em] text-slate-950 sm:text-4xl">A calmer way to manage your job search</h2>
+            <p className="mt-4 text-base leading-7 text-slate-600">Replace scattered notes and spreadsheets with a workspace designed around your next opportunity.</p>
+          </div>
+          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {features.map(({ icon: Icon, title, description, style }, index) => (
+              <article
+                key={title}
+                data-landing-reveal
+                style={{ "--landing-reveal-delay": `${index * 70}ms` } as CSSProperties}
+                className="app-surface app-surface-interactive p-6"
+              >
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${style}`}><Icon size={22} /></div>
+                <h3 className="mt-5 text-lg font-bold tracking-[-0.02em] text-slate-900">{title}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="how-it-works" className="py-24 sm:py-28">
+        <div className="mx-auto grid max-w-7xl gap-14 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+          <div data-landing-reveal className="lg:sticky lg:top-28">
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-indigo-600">A simple workflow</p>
+            <h2 className="mt-4 text-3xl font-bold tracking-[-0.04em] text-slate-950 sm:text-4xl">From interesting role to informed next step</h2>
+            <p className="mt-5 max-w-lg leading-7 text-slate-600">CareerTrack keeps the information you need close without turning your job search into another full-time job.</p>
+          </div>
+          <div className="space-y-4">
+            {steps.map(([number, title, description], index) => (
+              <article
+                key={number}
+                data-landing-reveal
+                style={{ "--landing-reveal-delay": `${index * 80}ms` } as CSSProperties}
+                className="app-surface flex gap-5 p-6 sm:gap-7 sm:p-8"
+              >
+                <span className="text-2xl font-bold tracking-[-0.05em] text-indigo-300">{number}</span>
+                <div>
+                  <h3 className="text-xl font-bold tracking-[-0.025em] text-slate-900">{title}</h3>
+                  <p className="mt-2 leading-7 text-slate-600">{description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="privacy" className="px-5 pb-24 sm:px-8 sm:pb-28">
+        <div data-landing-reveal className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,#111827_0%,#172554_60%,#164e63_120%)] px-6 py-14 text-white shadow-2xl shadow-slate-300/50 sm:px-12 lg:flex lg:items-center lg:justify-between lg:px-16 lg:py-16">
+          <div aria-hidden="true" className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl" />
+          <div className="relative max-w-2xl">
+            <div className="flex items-center gap-3 text-cyan-300"><ShieldCheck size={22} /><span className="text-sm font-bold uppercase tracking-[0.16em]">Privacy by purpose</span></div>
+            <h2 className="mt-5 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">Your career information stays personal.</h2>
+            <p className="mt-4 max-w-xl leading-7 text-slate-300">CareerTrack is a personal tracker—not a public job board. Your resumes and job-search records belong to your account and are used for AI comparison only when you request an analysis.</p>
+          </div>
+          <div className="relative mt-8 flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl border border-white/10 bg-white/10 text-cyan-300 lg:mt-0"><LockKeyhole size={38} /></div>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 bg-white px-5 py-20 text-center sm:px-8">
+        <div data-landing-reveal>
+          <Sparkles className="mx-auto text-indigo-500" size={28} />
+          <h2 className="mx-auto mt-5 max-w-2xl text-3xl font-bold tracking-[-0.04em] text-slate-950 sm:text-4xl">Ready to make your job search easier to follow?</h2>
+          <p className="mt-4 text-slate-600">Create your private workspace and keep your next move clear.</p>
+          <Link href="/login?mode=register" className="app-button-primary mt-8 px-6 py-3.5 text-base">Create your account <ArrowRight size={18} /></Link>
+        </div>
+      </section>
+
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+          <div className="flex items-center gap-2 font-semibold text-slate-700"><BriefcaseBusiness size={17} className="text-indigo-600" /> CareerTrack</div>
+          <p>Stay organized. Move forward.</p>
+          <Link href="/login" className="font-semibold text-indigo-600 hover:text-indigo-800">Log in to your workspace</Link>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+function DashboardPreview() {
+  return (
+    <div data-landing-reveal style={{ "--landing-reveal-delay": "120ms" } as CSSProperties} className="relative mx-auto w-full max-w-xl lg:mr-0">
+      <div aria-hidden="true" className="absolute inset-8 rounded-[2rem] bg-indigo-500/15 blur-3xl" />
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/95 p-3 shadow-[0_30px_80px_rgb(15_23_42/18%)] backdrop-blur sm:p-4">
+        <div className="flex items-center gap-2 border-b border-slate-100 px-2 pb-3">
+          <span className="h-2.5 w-2.5 rounded-full bg-rose-300" /><span className="h-2.5 w-2.5 rounded-full bg-amber-300" /><span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
+          <span className="ml-2 text-[10px] font-medium text-slate-400">Your CareerTrack dashboard</span>
+        </div>
+        <div className="grid grid-cols-[4.25rem_1fr] gap-3 pt-3 sm:grid-cols-[7rem_1fr]">
+          <div className="min-h-[23rem] rounded-2xl bg-gradient-to-b from-slate-900 to-slate-800 p-2.5 sm:p-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500 text-white"><BriefcaseBusiness size={16} /></div>
+            <div className="mt-7 space-y-2">
+              {[0, 1, 2, 3, 4].map((item) => <div key={item} className={`h-8 rounded-lg ${item === 0 ? "bg-white" : "bg-white/[0.06]"}`} />)}
+            </div>
+          </div>
+          <div className="min-w-0 p-1 sm:p-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Your job search</p>
+            <p className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">Welcome back!</p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {[["Applications", "12"], ["Interviews", "3"], ["Saved jobs", "18"], ["Offers", "1"]].map(([label, value]) => (
+                <div key={label} className="rounded-xl border border-slate-100 p-3 shadow-sm"><p className="text-[9px] text-slate-400">{label}</p><p className="mt-1 text-lg font-bold text-slate-800">{value}</p></div>
+              ))}
+            </div>
+            <div className="mt-3 rounded-xl border border-violet-100 bg-violet-50/70 p-3">
+              <div className="flex items-center gap-2 text-violet-700"><Sparkles size={14} /><span className="text-[10px] font-bold">AI Resume Insights</span></div>
+              <div className="mt-3 flex items-center justify-between rounded-lg bg-white p-2.5"><div><p className="text-[9px] text-slate-400">Strongest match</p><p className="mt-1 text-xs font-bold text-slate-800">Frontend Developer</p></div><p className="text-lg font-bold text-violet-700">88<span className="text-[9px]">/100</span></p></div>
+            </div>
+            <div className="mt-3 rounded-xl border border-slate-100 p-3"><div className="flex items-center gap-2"><FileText size={14} className="text-indigo-500" /><p className="text-[10px] font-bold text-slate-700">Recent applications</p></div><div className="mt-3 space-y-2">{["Example Company", "Design Studio"].map((company) => <div key={company} className="flex items-center justify-between"><span className="text-[9px] text-slate-500">{company}</span><span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[8px] font-semibold text-emerald-700">In progress</span></div>)}</div></div>
+          </div>
         </div>
       </div>
-      <p className="mt-4 text-xs text-slate-500">{note}</p>
     </div>
   );
 }

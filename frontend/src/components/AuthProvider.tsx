@@ -91,10 +91,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   function confirmLogout() {
     setShowLogoutConfirmation(false);
-
     window.localStorage.removeItem(authTokenKey);
-    setToken(null);
-    setUser(null);
+    window.location.replace("/");
   }
 
   return (
