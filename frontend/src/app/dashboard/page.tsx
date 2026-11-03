@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
@@ -95,7 +95,7 @@ export default function DashboardPage() {
               action={
                 <button
                   onClick={() => router.push("/jobs")}
-                  className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:self-auto"
+                  className="app-button-primary self-start sm:self-auto"
                 >
                   <Plus size={18} />
                   Add a job
@@ -137,7 +137,7 @@ export default function DashboardPage() {
             </section>
 
             <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 xl:col-span-2">
+              <div className="app-surface p-5 sm:p-6 xl:col-span-2">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                   <div>
                     <div className="flex items-center gap-2">
@@ -150,9 +150,6 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   </div>
-                  <button type="button" onClick={() => router.push("/jobs")} className="text-left text-sm font-semibold text-blue-600 hover:text-blue-700">
-                    Manage analyses →
-                  </button>
                 </div>
 
                 <div className="mt-6 grid grid-cols-3 gap-3">
@@ -168,23 +165,17 @@ export default function DashboardPage() {
                       <p className="mt-2 font-bold text-slate-900">{strongestMatch.position}</p>
                       <p className="mt-1 text-sm text-slate-600">{strongestMatch.company}</p>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <p className="text-2xl font-bold text-violet-700">{strongestMatch.latestAnalysisScore}/100</p>
-                      <button type="button" onClick={() => router.push(`/jobs?analysis=${encodeURIComponent(strongestMatch.id)}&view=history`)} className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-700">
-                        View <ArrowRight size={15} />
-                      </button>
-                    </div>
+                    <p className="text-2xl font-bold text-violet-700">{strongestMatch.latestAnalysisScore}/100</p>
                   </div>
                 ) : (
                   <div className="mt-5 rounded-xl border border-dashed border-slate-200 p-5 text-center">
                     <p className="text-sm font-semibold text-slate-700">No current AI match yet</p>
-                    <p className="mt-1 text-xs text-slate-500">Analyze a resume against a saved job to see your strongest match.</p>
-                    <button type="button" onClick={() => router.push("/jobs")} className="mt-3 text-sm font-semibold text-blue-600">Analyze a resume →</button>
+                    <p className="mt-1 text-xs text-slate-500">Analyze a resume against a saved job to see your strongest match here.</p>
                   </div>
                 )}
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+              <div className="app-surface p-5 sm:p-6">
                 <div className="flex items-center gap-3">
                   <div className="rounded-xl bg-amber-50 p-2.5 text-amber-600"><AlertTriangle size={20} /></div>
                   <div>
@@ -198,7 +189,7 @@ export default function DashboardPage() {
                       <div key={job.id} className="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
                         <p className="text-sm font-semibold text-slate-800">{job.position}</p>
                         <p className="mt-1 text-xs text-slate-500">{job.company} · Previous score {job.latestAnalysisScore}/100</p>
-                        <button type="button" onClick={() => router.push(`/jobs?analysis=${encodeURIComponent(job.id)}&view=new`)} className="mt-2 text-xs font-semibold text-amber-700 hover:text-amber-800">Analyze again →</button>
+                        <p className="mt-2 text-xs font-medium text-amber-700">Open Saved Jobs when you are ready to analyze again.</p>
                       </div>
                     ))}
                   </div>
@@ -212,7 +203,7 @@ export default function DashboardPage() {
             </section>
 
             <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 xl:col-span-2">
+              <div className="app-surface p-5 sm:p-6 xl:col-span-2">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <h3 className="text-lg font-bold text-slate-900">
@@ -237,9 +228,9 @@ export default function DashboardPage() {
                   <table className="w-full min-w-[600px] text-left">
                     <thead>
                       <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
-                        <th className="pb-3 pr-4 font-semibold">Company / Role</th>
-                        <th className="pb-3 pr-4 font-semibold">Date Applied</th>
-                        <th className="pb-3 pr-4 font-semibold">Status</th>
+                        <th scope="col" className="pb-3 pr-4 font-semibold">Company / Role</th>
+                        <th scope="col" className="pb-3 pr-4 font-semibold">Date Applied</th>
+                        <th scope="col" className="pb-3 pr-4 font-semibold">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -295,16 +286,11 @@ export default function DashboardPage() {
                   </table>
                 </div>
 
-                <button
-                  onClick={() => router.push("/applications")}
-                  className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700"
-                >
-                  View all applications →
-                </button>
+                <DashboardAction onClick={() => router.push("/applications")} className="mt-4">View all applications</DashboardAction>
               </div>
 
               <div className="space-y-6">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                <div className="app-surface p-5 sm:p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-lg font-bold text-slate-900">
@@ -351,15 +337,10 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   )}
-                  <button
-                    onClick={() => router.push("/interviews")}
-                    className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700"
-                  >
-                    Manage interviews →
-                  </button>
+                  <DashboardAction onClick={() => router.push("/interviews")} className="mt-4">Manage interviews</DashboardAction>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                <div className="app-surface p-5 sm:p-6">
                   <h3 className="text-lg font-bold text-slate-900">Application Pipeline</h3>
                   <p className="mt-1 text-sm text-slate-500">Where your applications currently stand.</p>
                   <div className="mt-5 space-y-4">
@@ -375,7 +356,7 @@ export default function DashboardPage() {
                       </div>;
                     })}
                   </div>
-                  <button type="button" onClick={() => router.push("/applications")} className="mt-5 text-sm font-semibold text-blue-600 hover:text-blue-700">View application pipeline →</button>
+                  <DashboardAction onClick={() => router.push("/applications")} className="mt-5">View application pipeline</DashboardAction>
                 </div>
 
                 <div className="rounded-2xl bg-gradient-to-br from-[#172B4D] to-[#264B80] p-6 text-white">
@@ -421,6 +402,29 @@ function InsightMetric({ label, value, style }: { label: string; value: number; 
   );
 }
 
+function DashboardAction({
+  children,
+  onClick,
+  className = "",
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`app-arrow-action inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1.5 pl-3 pr-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-px hover:border-indigo-200 hover:bg-indigo-50/70 hover:text-indigo-700 hover:shadow-md hover:shadow-indigo-100 ${className}`}
+    >
+      {children}
+      <span className="app-arrow-badge bg-indigo-50 text-indigo-600">
+        <ArrowRight size={14} aria-hidden="true" />
+      </span>
+    </button>
+  );
+}
+
 function SummaryCard({
   title,
   value,
@@ -435,7 +439,7 @@ function SummaryCard({
   iconStyle: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-md">
+    <div className="app-surface app-surface-interactive p-5">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-slate-500">{title}</p>

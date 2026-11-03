@@ -22,6 +22,7 @@ import {
 import { useJobs } from "@/components/JobsProvider";
 import { useResumes } from "@/components/ResumesProvider";
 import OutdatedAnalysisWarning from "@/components/OutdatedAnalysisWarning";
+import useDialogControls from "@/hooks/useDialogControls";
 
 type ApplicationForm = {
   jobId: string;
@@ -84,6 +85,9 @@ export default function ApplicationsPage() {
   const [applicationToDelete, setApplicationToDelete] =
     useState<Application | null>(null);
   const prefillHandled = useRef(false);
+
+  useDialogControls(showForm, closeForm);
+  useDialogControls(applicationToDelete !== null, () => setApplicationToDelete(null));
 
   useEffect(() => {
     if (prefillHandled.current || jobsLoading || resumesLoading) return;
@@ -244,7 +248,7 @@ export default function ApplicationsPage() {
             <button
               type="button"
               onClick={openAddApplication}
-              className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              className="app-button-primary self-start"
             >
               <Plus size={18} />
               Add Application
@@ -279,9 +283,7 @@ export default function ApplicationsPage() {
         </section>
 
         {(applicationsLoading || jobsLoading) && (
-          <p className="text-sm text-slate-500">
-            Loading your applications...
-          </p>
+          <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading your applications...</div>
         )}
 
         {applicationsError && (
@@ -290,9 +292,9 @@ export default function ApplicationsPage() {
           </p>
         )}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+        <section className="app-surface p-4 sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row">
-            <label className="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3 py-3">
+            <label className="app-search-control flex flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3 py-3">
               <Search size={18} className="shrink-0 text-slate-400" />
               <input
                 value={search}
@@ -307,7 +309,7 @@ export default function ApplicationsPage() {
               aria-label="Filter by application status"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-blue-500"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-indigo-500"
             >
               <option value="All statuses">All statuses</option>
               {statuses.map((status) => (
@@ -327,7 +329,7 @@ export default function ApplicationsPage() {
           </p>
         </section>
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <section className="app-surface overflow-hidden">
           <div className="border-b border-slate-100 p-5 sm:px-6">
             <h2 className="text-lg font-bold text-slate-900">
               Application History
@@ -455,12 +457,12 @@ export default function ApplicationsPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-slate-950/40 p-4 sm:items-center">
+        <div className="app-modal-backdrop app-modal-backdrop-scroll">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="application-form-title"
-            className="my-4 w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl sm:p-8"
+            className="app-modal-panel my-auto max-w-xl p-6 sm:p-8"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -602,14 +604,14 @@ export default function ApplicationsPage() {
                 <button
                   type="button"
                   onClick={closeForm}
-                  className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                  className="app-button-secondary"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+                  className="app-button-primary"
                 >
                   {editingId !== null
                     ? "Save Changes"
@@ -622,12 +624,12 @@ export default function ApplicationsPage() {
       )}
 
       {applicationToDelete && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+        <div className="app-modal-backdrop !z-[80]">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-application-dialog-title"
-            className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl"
+            className="app-modal-panel max-w-sm p-6 text-center"
           >
             <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
               <Trash2 size={21} />
@@ -672,12 +674,12 @@ export default function ApplicationsPage() {
           padding: 0.7rem 0.85rem;
           font-size: 0.875rem;
           outline: none;
-          background: white;
+          background-color: white;
         }
 
         .form-input:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgb(59 130 246 / 12%);
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 3px rgb(79 70 229 / 12%);
         }
       `}</style>
     </WorkspaceLayout>
@@ -694,7 +696,7 @@ function SummaryCard({
   icon: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="app-surface flex items-center justify-between p-5">
       <div>
         <p className="text-sm font-medium text-slate-500">{title}</p>
         <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>

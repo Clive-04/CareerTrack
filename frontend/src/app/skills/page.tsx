@@ -24,6 +24,7 @@ import {
   type Skill,
   type SkillCategory,
 } from "@/components/SkillsProvider";
+import useDialogControls from "@/hooks/useDialogControls";
 
 const categories: SkillCategory[] = [
   "Programming",
@@ -59,6 +60,9 @@ export default function SkillsPage() {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
   const [skillToDelete, setSkillToDelete] = useState<Skill | null>(null);
+
+  useDialogControls(showModal, () => setShowModal(false));
+  useDialogControls(skillToDelete !== null, () => setSkillToDelete(null));
 
   const filteredSkills = useMemo(() => {
     return skills.filter((skill) => {
@@ -158,7 +162,7 @@ export default function SkillsPage() {
   async function confirmDeleteSkill() { if (!skillToDelete) return; try { await removeSkill(skillToDelete.id); setSkillToDelete(null); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to delete skill."); } }
 
   const inputClass =
-    "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
+    "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
 
   function getCategoryIcon(category: SkillCategory) {
     switch (category) {
@@ -213,14 +217,14 @@ export default function SkillsPage() {
           action={
             <button
               onClick={openAddModal}
-              className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              className="app-button-primary self-start"
             >
               <Plus size={18} />
               Add Skill
             </button>
           }
         />
-        {isLoading && <p className="text-sm text-gray-500">Loading skills...</p>}
+        {isLoading && <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading skills...</div>}
         {skillsError && <p role="alert" className="text-sm text-red-600">{skillsError}</p>}
       </div>
 
@@ -257,7 +261,7 @@ export default function SkillsPage() {
             return (
               <div
                 key={card.label}
-                className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
+                className="app-surface app-surface-interactive p-5"
               >
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-gray-500">{card.label}</p>
@@ -275,7 +279,7 @@ export default function SkillsPage() {
           })}
         </div>
 
-        <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+        <section className="app-surface overflow-hidden">
           <div className="flex flex-col gap-4 border-b border-gray-100 p-5 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <h2 className="font-semibold text-gray-900">My Skills</h2>
@@ -291,17 +295,19 @@ export default function SkillsPage() {
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                 />
                 <input
+                  aria-label="Search skills"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search skills..."
-                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500 sm:w-52"
+                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-indigo-500 sm:w-52"
                 />
               </div>
 
               <select
+                aria-label="Filter skills by category"
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500"
               >
                 <option value="All">All categories</option>
                 {categories.map((category) => (
@@ -312,9 +318,10 @@ export default function SkillsPage() {
               </select>
 
               <select
+                aria-label="Filter skills by proficiency"
                 value={proficiencyFilter}
                 onChange={(e) => setProficiencyFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500"
               >
                 <option value="All">All proficiency levels</option>
                 {proficiencyLevels.map((level) => (
@@ -328,7 +335,7 @@ export default function SkillsPage() {
 
           <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredSkills.length === 0 ? (
-              <div className="py-12 text-center md:col-span-2 xl:col-span-3">
+              <div className="app-empty-state md:col-span-2 xl:col-span-3">
                 <Award size={36} className="mx-auto text-gray-300" />
                 <p className="mt-3 font-medium text-gray-700">
                   No skills found
@@ -344,7 +351,7 @@ export default function SkillsPage() {
                 return (
                   <article
                     key={skill.id}
-                    className="rounded-xl border border-gray-200 p-5 transition hover:border-blue-200 hover:shadow-md"
+                    className="rounded-xl border border-gray-200 p-5 transition hover:border-indigo-200 hover:shadow-md"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
@@ -424,11 +431,11 @@ export default function SkillsPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-gray-900/50 p-4">
-          <div className="my-auto w-full max-w-xl rounded-2xl bg-white shadow-xl">
+        <div className="app-modal-backdrop app-modal-backdrop-scroll">
+          <div role="dialog" aria-modal="true" aria-labelledby="skill-form-title" className="app-modal-panel my-auto max-w-xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">
+                <h2 id="skill-form-title" className="text-lg font-bold text-gray-900">
                   {editingId !== null ? "Edit Skill" : "Add Skill"}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
@@ -557,14 +564,14 @@ export default function SkillsPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                  className="app-button-secondary"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                  className="app-button-primary"
                 >
                   {editingId !== null ? "Save Changes" : "Add Skill"}
                 </button>
@@ -574,13 +581,13 @@ export default function SkillsPage() {
         </div>
       )}
       {skillToDelete && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-gray-900/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl">
+        <div className="app-modal-backdrop !z-[80]">
+          <div role="alertdialog" aria-modal="true" aria-labelledby="delete-skill-title" aria-describedby="delete-skill-description" className="app-modal-panel max-w-md p-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600"><Trash2 size={22} /></div>
-            <h2 className="mt-4 text-lg font-bold text-gray-900">Delete skill?</h2>
-            <p className="mt-2 text-sm text-gray-500">Delete &quot;{skillToDelete.name}&quot; from your skills?</p>
+            <h2 id="delete-skill-title" className="mt-4 text-lg font-bold text-gray-900">Delete skill?</h2>
+            <p id="delete-skill-description" className="mt-2 text-sm text-gray-500">Delete &quot;{skillToDelete.name}&quot; from your skills?</p>
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
-              <button type="button" onClick={() => setSkillToDelete(null)} className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button type="button" onClick={() => setSkillToDelete(null)} className="app-button-secondary">Cancel</button>
               <button type="button" onClick={confirmDeleteSkill} className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">Delete skill</button>
             </div>
           </div>

@@ -8,6 +8,7 @@ import DescriptionFormattingToolbar from "@/components/DescriptionFormattingTool
 import { useJobs, type Job } from "@/components/JobsProvider";
 import ResumeAnalysisDialog from "@/components/ResumeAnalysisDialog";
 import { countWords, MIN_JOB_WORDS, MAX_JOB_CHARACTERS } from "@/lib/jobDescription";
+import useDialogControls from "@/hooks/useDialogControls";
 import {
   Search,
   Plus,
@@ -119,6 +120,9 @@ export default function JobsPage() {
   const [analysisView, setAnalysisView] = useState<"new" | "history">("new");
   const dashboardShortcutHandled = useRef(false);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+  useDialogControls(showForm, closeForm);
+  useDialogControls(jobToDelete !== null, () => setJobToDelete(null));
 
   useEffect(() => {
     if (dashboardShortcutHandled.current || jobsLoading) return;
@@ -262,7 +266,7 @@ export default function JobsPage() {
             <button
               type="button"
               onClick={openAddJob}
-              className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              className="app-button-primary self-start"
             >
               <Plus size={18} />
               Save Job
@@ -297,7 +301,7 @@ export default function JobsPage() {
         </section>
 
         {jobsLoading && (
-          <p className="text-sm text-slate-500">Loading your saved jobs...</p>
+          <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading your saved jobs...</div>
         )}
 
         {jobsError && (
@@ -306,7 +310,7 @@ export default function JobsPage() {
           </p>
         )}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+        <section className="app-surface p-4 sm:p-6">
           <div className="flex items-center gap-2">
             <SlidersHorizontal size={19} className="text-slate-500" />
             <h2 className="font-semibold text-slate-900">
@@ -315,7 +319,7 @@ export default function JobsPage() {
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-3">
+            <label className="app-search-control flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-3">
               <Search size={18} className="shrink-0 text-slate-400" />
               <input
                 value={search}
@@ -330,7 +334,7 @@ export default function JobsPage() {
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value)}
               aria-label="Filter by employment type"
-              className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-blue-500"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-indigo-500"
             >
               {employmentTypes.map((type) => (
                 <option key={type} value={type}>
@@ -343,7 +347,7 @@ export default function JobsPage() {
               value={locationFilter}
               onChange={(event) => setLocationFilter(event.target.value)}
               aria-label="Filter by location"
-              className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-blue-500"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-indigo-500"
             >
               {locations.map((location) => (
                 <option key={location} value={location}>
@@ -366,7 +370,7 @@ export default function JobsPage() {
           {filteredJobs.map((job) => (
             <article
               key={job.id}
-              className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-blue-200 hover:shadow-sm sm:p-6"
+              className="app-surface app-surface-interactive p-5 sm:p-6"
             >
               <div className="flex flex-col justify-between gap-4 sm:flex-row">
                 <div className="flex gap-4">
@@ -457,7 +461,7 @@ export default function JobsPage() {
           ))}
 
           {filteredJobs.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+            <div className="app-empty-state">
               <BriefcaseBusiness
                 size={32}
                 className="mx-auto text-slate-300"
@@ -488,12 +492,12 @@ export default function JobsPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-slate-950/40 p-4 sm:items-center">
+        <div className="app-modal-backdrop app-modal-backdrop-scroll">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="job-form-title"
-            className="my-4 w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl sm:p-8"
+            className="app-modal-panel my-auto max-w-xl p-6 sm:p-8"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -631,14 +635,14 @@ export default function JobsPage() {
                 <button
                   type="button"
                   onClick={closeForm}
-                  className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                  className="app-button-secondary"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+                  className="app-button-primary"
                 >
                   {editingId !== null ? "Save Changes" : "Save Job"}
                 </button>
@@ -649,12 +653,12 @@ export default function JobsPage() {
       )}
 
       {jobToDelete && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+        <div className="app-modal-backdrop !z-[80]">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-job-dialog-title"
-            className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl"
+            className="app-modal-panel max-w-sm p-6 text-center"
           >
             <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
               <Trash2 size={21} />
@@ -699,12 +703,12 @@ export default function JobsPage() {
           padding: 0.7rem 0.85rem;
           font-size: 0.875rem;
           outline: none;
-          background: white;
+          background-color: white;
         }
 
         .form-input:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgb(59 130 246 / 12%);
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 3px rgb(79 70 229 / 12%);
         }
       `}</style>
       {analysisJob && <ResumeAnalysisDialog key={analysisJob.id} job={jobs.find((job) => job.id === analysisJob.id) ?? analysisJob} initialView={analysisView} onAnalysisChange={refreshJobs} onClose={() => setAnalysisJob(null)} />}
@@ -722,7 +726,7 @@ function Summary({
   icon: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="app-surface flex items-center justify-between p-5">
       <div>
         <p className="text-sm font-medium text-slate-500">{label}</p>
         <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>

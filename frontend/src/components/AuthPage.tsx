@@ -90,7 +90,7 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
   if (isLoading || user) return <AuthenticationLoader />;
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(135deg,#eef2ff_0%,#f8fafc_48%,#ecfeff_100%)] p-4 sm:p-8">
+    <main className="relative flex min-h-screen items-start justify-center overflow-x-hidden bg-[linear-gradient(135deg,#eef2ff_0%,#f8fafc_48%,#ecfeff_100%)] p-4 sm:items-center sm:p-8">
       <AuthBackground />
 
       <section className="relative w-full max-w-md rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_28px_80px_rgb(30_41_59/16%)] backdrop-blur-xl sm:p-8">

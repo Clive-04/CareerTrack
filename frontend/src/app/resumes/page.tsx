@@ -13,11 +13,15 @@ import {
   CalendarDays,
   Star,
   Upload,
+  ChevronDown,
+  ChevronUp,
+  Check,
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
 import { useResumes, type Resume } from "@/components/ResumesProvider";
 import { useSkills } from "@/components/SkillsProvider";
+import useDialogControls from "@/hooks/useDialogControls";
 
 const emptyForm = {
   name: "",
@@ -52,6 +56,9 @@ export default function ResumesPage() {
   const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null);
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [skillSearch, setSkillSearch] = useState("");
+
+  useDialogControls(showModal && !saving, () => setShowModal(false));
+  useDialogControls(resumeToDelete !== null, () => setResumeToDelete(null));
 
   const filteredAvailableSkills = availableSkills.filter((skill) =>
     skill.name.toLowerCase().includes(skillSearch.toLowerCase()),
@@ -163,7 +170,7 @@ export default function ResumesPage() {
   }
 
   const inputClass =
-    "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
+    "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
 
   return (
     <WorkspaceLayout>
@@ -176,7 +183,7 @@ export default function ResumesPage() {
             <button
               type="button"
               onClick={openAddModal}
-              className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              className="app-button-primary self-start"
             >
               <Plus size={18} />
               Add Resume
@@ -184,11 +191,11 @@ export default function ResumesPage() {
           }
         />
         {message && !showModal && <p role="alert" className="text-sm text-red-600">{message}</p>}
-        {isLoading && <p className="text-sm text-gray-500">Loading resumes...</p>}
+        {isLoading && <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading resumes...</div>}
         {resumesError && <p role="alert" className="text-sm text-red-600">{resumesError}</p>}
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="app-surface app-surface-interactive p-5">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">Total Resumes</p>
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -203,7 +210,7 @@ export default function ResumesPage() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="app-surface app-surface-interactive p-5">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">Target Roles</p>
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
@@ -218,7 +225,7 @@ export default function ResumesPage() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="app-surface app-surface-interactive p-5">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">Default Resume</p>
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
@@ -234,7 +241,7 @@ export default function ResumesPage() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
+        <section className="app-surface overflow-hidden">
           <div className="flex flex-col gap-4 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-semibold text-gray-900">
@@ -252,10 +259,11 @@ export default function ResumesPage() {
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                 />
                 <input
+                  aria-label="Search resumes"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search resumes..."
-                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500 sm:w-56"
+                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-indigo-500 sm:w-56"
                 />
               </div>
 
@@ -263,7 +271,7 @@ export default function ResumesPage() {
                 aria-label="Filter resumes by target role"
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500"
               >
                 <option value="All">All target roles</option>
                 {roles.map((role) => (
@@ -277,7 +285,7 @@ export default function ResumesPage() {
 
           <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredResumes.length === 0 ? (
-              <div className="py-12 text-center md:col-span-2 xl:col-span-3">
+              <div className="app-empty-state md:col-span-2 xl:col-span-3">
                 <FileText size={36} className="mx-auto text-gray-300" />
                 <p className="mt-3 font-medium text-gray-700">
                   No resumes found
@@ -290,7 +298,7 @@ export default function ResumesPage() {
               filteredResumes.map((resume) => (
                 <article
                   key={resume.id}
-                  className="flex flex-col rounded-xl border border-gray-200 p-5 transition hover:border-blue-200 hover:shadow-md"
+                  className="flex flex-col rounded-xl border border-gray-200 p-5 transition hover:border-indigo-200 hover:shadow-md"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
@@ -428,11 +436,11 @@ export default function ResumesPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-gray-900/50 p-4">
-          <div className="my-auto w-full max-w-2xl rounded-2xl bg-white shadow-xl">
+        <div className="app-modal-backdrop app-modal-backdrop-scroll">
+          <div role="dialog" aria-modal="true" aria-labelledby="resume-form-title" className="app-modal-panel my-auto max-w-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">
+                <h2 id="resume-form-title" className="text-lg font-bold text-gray-900">
                   {editingId !== null ? "Edit Resume" : "Add Resume"}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
@@ -548,7 +556,7 @@ export default function ResumesPage() {
                       <button
                         type="button"
                         onClick={() => setSkillsOpen((open) => !open)}
-                        className="flex min-h-11 w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left text-sm text-gray-700 outline-none transition hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        className="flex min-h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white py-2 pl-3 pr-2 text-left text-sm text-slate-700 shadow-sm outline-none transition hover:border-indigo-300 hover:shadow-md focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                       >
                         <span className="flex min-w-0 flex-wrap gap-2">
                           {form.skills.length > 0 ? (
@@ -559,11 +567,13 @@ export default function ResumesPage() {
                             ))
                           ) : "Select skills"}
                         </span>
-                        <span className="text-gray-400">{skillsOpen ? "▲" : "▼"}</span>
+                        <span className="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                          {skillsOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+                        </span>
                       </button>
 
                       {skillsOpen && (
-                        <div className="absolute z-10 mt-2 w-full rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
+                        <div className="absolute z-10 mt-2 w-full rounded-xl border border-indigo-100 bg-white p-2 shadow-xl shadow-slate-200/70">
                           <div className="relative">
                             <Search
                               size={16}
@@ -574,7 +584,7 @@ export default function ResumesPage() {
                               value={skillSearch}
                               onChange={(event) => setSkillSearch(event.target.value)}
                               placeholder="Search skills..."
-                              className="w-full rounded-md border border-gray-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500"
+                              className="w-full rounded-md border border-gray-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-indigo-500"
                             />
                           </div>
 
@@ -597,10 +607,10 @@ export default function ResumesPage() {
                                           : [...form.skills, skill.name],
                                       })
                                     }
-                                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-blue-50"
+                                    className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${selected ? "bg-indigo-50 font-medium text-indigo-800" : "text-slate-700 hover:bg-slate-50"}`}
                                   >
                                     <span>{skill.name}</span>
-                                    {selected && <span className="font-semibold text-blue-600">✓</span>}
+                                    {selected && <span className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-100 text-indigo-700"><Check size={14} strokeWidth={3} /></span>}
                                   </button>
                                 );
                               })
@@ -640,7 +650,7 @@ export default function ResumesPage() {
                   type="button"
                   disabled={saving}
                 onClick={() => setShowModal(false)}
-                  className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                  className="app-button-secondary"
                 >
                   Cancel
                 </button>
@@ -648,7 +658,7 @@ export default function ResumesPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                  className="app-button-primary"
                 >
                   {saving ? "Saving and reading resume..." : editingId !== null ? "Save Changes" : "Add Resume"}
                 </button>
@@ -659,13 +669,13 @@ export default function ResumesPage() {
       )}
 
       {resumeToDelete && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-gray-900/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl">
+        <div className="app-modal-backdrop !z-[80]">
+          <div role="alertdialog" aria-modal="true" aria-labelledby="delete-resume-title" aria-describedby="delete-resume-description" className="app-modal-panel max-w-md p-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600"><Trash2 size={22} /></div>
-            <h2 className="mt-4 text-lg font-bold text-gray-900">Delete resume?</h2>
-            <p className="mt-2 text-sm text-gray-500">Delete &quot;{resumeToDelete.name}&quot; from your resume library?</p>
+            <h2 id="delete-resume-title" className="mt-4 text-lg font-bold text-gray-900">Delete resume?</h2>
+            <p id="delete-resume-description" className="mt-2 text-sm text-gray-500">Delete &quot;{resumeToDelete.name}&quot; from your resume library?</p>
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
-              <button type="button" onClick={() => setResumeToDelete(null)} className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button type="button" onClick={() => setResumeToDelete(null)} className="app-button-secondary">Cancel</button>
               <button type="button" onClick={confirmDeleteResume} className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">Delete resume</button>
             </div>
           </div>

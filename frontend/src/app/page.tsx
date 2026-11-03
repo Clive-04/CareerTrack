@@ -111,7 +111,7 @@ export default function LandingPage() {
             <Link href="/login" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:px-4">
               Log in
             </Link>
-            <Link href="/register" className="app-button-primary !min-h-0 !px-4 !py-2.5">
+            <Link href="/register" aria-label="Create account" className="app-button-primary !min-h-0 !px-4 !py-2.5">
               <span className="hidden sm:inline">Create account</span>
               <span className="sm:hidden">Join</span>
             </Link>
@@ -132,7 +132,7 @@ export default function LandingPage() {
               CareerTrack is a private workspace for saved jobs, applications, resumes, skills, interviews, and AI-assisted resume comparisons.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link href="/register" className="app-button-primary px-6 py-3.5 text-base">
+              <Link href="/register" className="app-button-primary app-arrow-action px-6 py-3.5 text-base">
                 Start tracking for free <ArrowRight size={18} />
               </Link>
               <a href="#how-it-works" className="app-button-secondary px-6 py-3.5 text-base">
@@ -220,7 +220,7 @@ export default function LandingPage() {
           <Sparkles className="mx-auto text-indigo-500" size={28} />
           <h2 className="mx-auto mt-5 max-w-2xl text-3xl font-bold tracking-[-0.04em] text-slate-950 sm:text-4xl">Ready to make your job search easier to follow?</h2>
           <p className="mt-4 text-slate-600">Create your private workspace and keep your next move clear.</p>
-          <Link href="/register" className="app-button-primary mt-8 px-6 py-3.5 text-base">Create your account <ArrowRight size={18} /></Link>
+          <Link href="/register" className="app-button-primary app-arrow-action mt-8 px-6 py-3.5 text-base">Create your account <ArrowRight size={18} /></Link>
         </div>
       </section>
 

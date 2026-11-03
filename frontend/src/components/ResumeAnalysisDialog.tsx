@@ -147,7 +147,7 @@ export default function ResumeAnalysisDialog({ job, onClose, onAnalysisChange, i
           {!ready.length && <p className="text-sm text-amber-700">Upload a readable resume and extract its text on the <Link href="/resumes" className="underline">Resumes page</Link> first.</p>}
 
           {!preview && <button type="button" onClick={loadPreview} disabled={!resumeId || !!busy || countWords(job.description) < MIN_JOB_WORDS}
-            className="rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white disabled:opacity-50">{busy ? "Preparing text..." : "Review text before sending"}</button>}
+            className="app-button-primary disabled:opacity-50">{busy ? "Preparing text..." : "Review text before sending"}</button>}
 
           {preview && <>
             <div className="rounded-lg bg-amber-50 p-4 text-sm leading-6 text-amber-900">
@@ -194,7 +194,7 @@ export default function ResumeAnalysisDialog({ job, onClose, onAnalysisChange, i
           <p className="text-sm text-slate-500">Review AI suggestions for accuracy. Only add claims you can support. This result is saved privately in your history.</p>
           {job.latestAnalysisIsStale && <OutdatedAnalysisWarning reasons={job.latestAnalysisStaleReasons} message="Analyze again before applying for the most accurate comparison. You can still continue with this resume if you have reviewed it yourself." />}
           <div className="flex flex-wrap gap-3">
-            {result.resume_id && <Link href={`/applications?job=${encodeURIComponent(job.id)}&resume=${encodeURIComponent(result.resume_id)}`} className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700">{job.latestAnalysisIsStale ? "Continue with this resume" : "Add application using this resume"}</Link>}
+            {result.resume_id && <Link href={`/applications?job=${encodeURIComponent(job.id)}&resume=${encodeURIComponent(result.resume_id)}`} className="app-button-primary">{job.latestAnalysisIsStale ? "Continue with this resume" : "Add application using this resume"}</Link>}
             <button type="button" onClick={() => { setResult(null); setConsent(false); }} className="rounded-lg border px-4 py-2 font-medium">{view === "history" ? "Back to history" : "Review text again"}</button>
           </div>
         </div>}

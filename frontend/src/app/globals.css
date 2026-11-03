@@ -65,6 +65,53 @@ input,
 select,
 textarea { font: inherit; }
 
+select:not([multiple]) {
+  appearance: none;
+  cursor: pointer;
+  background-color: white;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E"),
+    linear-gradient(90deg, transparent calc(100% - 2.7rem), #e0e7ff calc(100% - 2.7rem), #eef2ff 100%);
+  background-position: right 0.82rem center, center;
+  background-repeat: no-repeat;
+  background-size: 1rem, 100% 100%;
+  padding-right: 3.35rem !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+select:not([multiple]):not(:disabled):hover {
+  border-color: #818cf8;
+  box-shadow: 0 4px 12px rgb(79 70 229 / 10%);
+}
+
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.app-arrow-action > svg:last-child {
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-arrow-action:hover > svg:last-child {
+  transform: translateX(3px);
+}
+
+.app-arrow-badge {
+  display: inline-flex;
+  height: 1.6rem;
+  width: 1.6rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  transition: background-color 180ms ease, color 180ms ease, transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-arrow-action:hover .app-arrow-badge {
+  transform: translateX(2px);
+}
+
 button,
 a { -webkit-tap-highlight-color: transparent; }
 
@@ -276,14 +323,14 @@ textarea:focus-visible {
   animation: app-topbar-enter 360ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
-.app-page-enter > * > :not(.fixed) {
+.app-page-enter > * > :not(.fixed):not(.app-modal-backdrop) {
   animation: app-section-enter 520ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
-.app-page-enter > * > :not(.fixed):nth-child(2) { animation-delay: 55ms; }
-.app-page-enter > * > :not(.fixed):nth-child(3) { animation-delay: 100ms; }
-.app-page-enter > * > :not(.fixed):nth-child(4) { animation-delay: 145ms; }
-.app-page-enter > * > :not(.fixed):nth-child(n + 5) { animation-delay: 180ms; }
+.app-page-enter > * > :not(.fixed):not(.app-modal-backdrop):nth-child(2) { animation-delay: 55ms; }
+.app-page-enter > * > :not(.fixed):not(.app-modal-backdrop):nth-child(3) { animation-delay: 100ms; }
+.app-page-enter > * > :not(.fixed):not(.app-modal-backdrop):nth-child(4) { animation-delay: 145ms; }
+.app-page-enter > * > :not(.fixed):not(.app-modal-backdrop):nth-child(n + 5) { animation-delay: 180ms; }
 
 .app-sidebar-button {
   transition: background-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
@@ -302,6 +349,74 @@ textarea:focus-visible {
   border-top-color: var(--primary);
   border-radius: 999px;
   animation: app-spin 700ms linear infinite;
+}
+
+.app-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(2 6 23 / 48%);
+  backdrop-filter: blur(5px);
+}
+
+.app-modal-backdrop-scroll {
+  overflow-y: auto;
+}
+
+.app-modal-panel {
+  width: 100%;
+  max-height: 90dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgb(255 255 255 / 75%);
+  border-radius: 1rem;
+  background: white;
+  box-shadow: 0 28px 70px rgb(15 23 42 / 24%);
+}
+
+.app-empty-state {
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-card);
+  background: rgb(255 255 255 / 72%);
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+}
+
+.app-loading-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: rgb(255 255 255 / 78%);
+  padding: 0.65rem 0.85rem;
+  color: var(--muted-strong);
+  font-size: 0.875rem;
+  font-weight: 550;
+}
+
+.app-search-control {
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.app-search-control:focus-within {
+  border-color: var(--primary);
+  background: white;
+  box-shadow: var(--focus-ring);
+}
+
+.app-search-control:focus-within > svg {
+  color: var(--primary);
+}
+
+.app-search-control input:focus-visible {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none;
 }
 
 [data-landing-reveal] {

@@ -23,6 +23,7 @@ import {
   type InterviewStatus,
   type InterviewType,
 } from "@/components/InterviewsProvider";
+import useDialogControls from "@/hooks/useDialogControls";
 
 const emptyForm = {
   applicationId: "",
@@ -77,6 +78,9 @@ export default function InterviewsPage() {
   const [interviewToDelete, setInterviewToDelete] = useState<Interview | null>(
     null,
   );
+
+  useDialogControls(showModal, closeModal);
+  useDialogControls(interviewToDelete !== null, () => setInterviewToDelete(null));
 
   const today = new Date().toLocaleDateString("en-CA");
 
@@ -222,7 +226,7 @@ export default function InterviewsPage() {
   }
 
   const inputClass =
-    "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
+    "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
 
   return (
     <WorkspaceLayout>
@@ -235,7 +239,7 @@ export default function InterviewsPage() {
             <button
               type="button"
               onClick={() => openAddModal()}
-              className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              className="app-button-primary self-start"
             >
               <Plus size={18} />
               Add Interview
@@ -244,7 +248,7 @@ export default function InterviewsPage() {
         />
 
         {(interviewsLoading || applicationsLoading) && (
-          <p className="text-sm text-gray-500">Loading interviews...</p>
+          <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading interviews...</div>
         )}
         {interviewsError && (
           <p role="alert" className="text-sm text-red-600">
@@ -322,7 +326,7 @@ export default function InterviewsPage() {
             return (
               <div
                 key={card.label}
-                className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
+                className="app-surface app-surface-interactive p-5"
               >
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-gray-500">{card.label}</p>
@@ -340,7 +344,7 @@ export default function InterviewsPage() {
           })}
         </section>
 
-        <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+        <section className="app-surface overflow-hidden">
           <div className="flex flex-col gap-4 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-semibold text-gray-900">
@@ -358,10 +362,11 @@ export default function InterviewsPage() {
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                 />
                 <input
+                  aria-label="Search interviews"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search interviews..."
-                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500 sm:w-56"
+                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-indigo-500 sm:w-56"
                 />
               </div>
 
@@ -369,7 +374,7 @@ export default function InterviewsPage() {
                 aria-label="Filter interviews by status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500"
               >
                 <option value="All">All statuses</option>
                 <option value="Scheduled">Scheduled</option>
@@ -381,7 +386,7 @@ export default function InterviewsPage() {
 
           <div className="divide-y divide-gray-100">
             {filteredInterviews.length === 0 ? (
-              <div className="p-12 text-center">
+              <div className="app-empty-state m-5">
                 <CalendarDays
                   size={36}
                   className="mx-auto text-gray-300"
@@ -477,7 +482,7 @@ export default function InterviewsPage() {
                           e.target.value as InterviewStatus,
                         )
                       }
-                      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500"
                     >
                       <option value="Scheduled">Scheduled</option>
                       <option value="Completed">Completed</option>
@@ -514,12 +519,12 @@ export default function InterviewsPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-gray-900/50 p-4">
+        <div className="app-modal-backdrop app-modal-backdrop-scroll">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="interview-form-title"
-            className="my-auto w-full max-w-2xl rounded-2xl bg-white shadow-xl"
+            className="app-modal-panel my-auto max-w-2xl"
           >
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
               <div>
@@ -689,14 +694,14 @@ export default function InterviewsPage() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                  className="app-button-secondary"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                  className="app-button-primary"
                 >
                   {editingId !== null ? "Save Changes" : "Add Interview"}
                 </button>
@@ -707,15 +712,15 @@ export default function InterviewsPage() {
       )}
 
       {interviewToDelete && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-gray-900/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl">
+        <div className="app-modal-backdrop !z-[80]">
+          <div role="alertdialog" aria-modal="true" aria-labelledby="delete-interview-title" aria-describedby="delete-interview-description" className="app-modal-panel max-w-md p-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
               <Trash2 size={22} />
             </div>
-            <h2 className="mt-4 text-lg font-bold text-gray-900">
+            <h2 id="delete-interview-title" className="mt-4 text-lg font-bold text-gray-900">
               Delete interview?
             </h2>
-            <p className="mt-2 text-sm text-gray-500">
+            <p id="delete-interview-description" className="mt-2 text-sm text-gray-500">
               This will permanently remove the interview for {" "}
               <span className="font-medium text-gray-700">
                 {interviewToDelete.company}
@@ -726,7 +731,7 @@ export default function InterviewsPage() {
               <button
                 type="button"
                 onClick={() => setInterviewToDelete(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                className="app-button-secondary"
               >
                 Cancel
               </button>
