@@ -109,6 +109,23 @@ async function mockCareerTrackApi(page: Page) {
   await page.route("http://127.0.0.1:8000/**", handleApiRoute);
 }
 
+async function openWorkspaceNavigation(page: Page) {
+  const sidebar = page.getByRole("complementary");
+  if ((page.viewportSize()?.width ?? 1280) < 1024) {
+    const menuButton = page.getByRole("button", { name: "Open navigation menu" });
+    if (await menuButton.getAttribute("aria-expanded") !== "true") {
+      await menuButton.click();
+    }
+    await expect(sidebar).toBeInViewport();
+  }
+  return sidebar;
+}
+
+async function followWorkspaceLink(page: Page, name: string) {
+  const sidebar = await openWorkspaceNavigation(page);
+  await sidebar.getByRole("link", { name }).click();
+}
+
 test("keeps the landing page public and protects the dashboard", async ({ page }) => {
   const response = await page.goto("/");
 
@@ -170,6 +187,30 @@ test("registers a new user through the dedicated registration page", async ({ pa
   await expect(page.getByRole("heading", { name: "Welcome back!" })).toBeVisible();
 });
 
+test("navigates every workspace page", async ({ page }) => {
+  await mockCareerTrackApi(page);
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("clive@example.com");
+  await page.getByLabel("Password", { exact: true }).fill("correct-password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  const pages = [
+    ["Saved Jobs", "/jobs", "Saved Jobs"],
+    ["Applications", "/applications", "Applications"],
+    ["Interviews", "/interviews", "Interviews"],
+    ["Resumes", "/resumes", "Resumes"],
+    ["Skills", "/skills", "Skills"],
+    ["Dashboard", "/dashboard", "Welcome back!"],
+  ] as const;
+
+  for (const [link, path, heading] of pages) {
+    await followWorkspaceLink(page, link);
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
+    await expect(page.getByRole("heading", { name: heading, exact: true }).first()).toBeVisible();
+  }
+});
+
 test("signs in, loads dashboard data, and confirms logout", async ({ page }) => {
   await mockCareerTrackApi(page);
   await page.goto("/login");
@@ -186,7 +227,11 @@ test("signs in, loads dashboard data, and confirms logout", async ({ page }) => 
   await page.goto("/");
   await expect(page).toHaveURL(/\/dashboard$/);
 
-  await page.getByRole("complementary").getByRole("link", { name: "Saved Jobs" }).click();
+  await followWorkspaceLink(page, "Saved Jobs");
+  const jobSearch = page.getByLabel("Search jobs");
+  await jobSearch.focus();
+  await expect(jobSearch.locator("..")).not.toHaveCSS("box-shadow", "none");
+  await expect(jobSearch).toHaveCSS("box-shadow", "none");
   await page.getByRole("button", { name: "Save Job" }).click();
   const jobDialog = page.getByRole("dialog", { name: "Save a job" });
   await expect(jobDialog).toBeVisible();
@@ -198,16 +243,18 @@ test("signs in, loads dashboard data, and confirms logout", async ({ page }) => 
   expect(Math.round(backdropBox?.y ?? -1)).toBe(0);
   expect(Math.round(backdropBox?.width ?? -1)).toBe(viewport?.width);
   expect(Math.round(backdropBox?.height ?? -1)).toBe(viewport?.height);
-  await jobDialog.getByRole("button", { name: "Close form" }).click();
+  await page.keyboard.press("Escape");
+  await expect(jobDialog).toBeHidden();
 
-  await page.getByRole("complementary").getByRole("link", { name: "Interviews" }).click();
+  await followWorkspaceLink(page, "Interviews");
   await expect(page.getByRole("heading", { name: "Applications ready to schedule" })).toBeVisible();
   await page.getByRole("button", { name: "Schedule interview" }).click();
   const interviewDialog = page.getByRole("dialog", { name: "Add Interview" });
   await expect(interviewDialog.locator("select").first()).toHaveValue("application-1");
-  await interviewDialog.getByRole("button", { name: "Close form" }).click();
+  await page.keyboard.press("Escape");
+  await expect(interviewDialog).toBeHidden();
 
-  const logoutButton = page.getByRole("complementary").getByRole("button", { name: "Log out" });
+  const logoutButton = (await openWorkspaceNavigation(page)).getByRole("button", { name: "Log out" });
   await logoutButton.click();
   const dialog = page.getByRole("dialog", { name: "Log out of CareerTrack?" });
   await expect(dialog).toBeVisible();
