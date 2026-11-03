@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
+import JobDescription from "@/components/JobDescription";
+import DescriptionFormattingToolbar from "@/components/DescriptionFormattingToolbar";
 import { useJobs, type Job } from "@/components/JobsProvider";
 import ResumeAnalysisDialog from "@/components/ResumeAnalysisDialog";
 import { countWords, MIN_JOB_WORDS, MAX_JOB_CHARACTERS } from "@/lib/jobDescription";
@@ -116,6 +118,7 @@ export default function JobsPage() {
   const [analysisJob, setAnalysisJob] = useState<Job | null>(null);
   const [analysisView, setAnalysisView] = useState<"new" | "history">("new");
   const dashboardShortcutHandled = useRef(false);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (dashboardShortcutHandled.current || jobsLoading) return;
@@ -413,9 +416,7 @@ export default function JobsPage() {
                 </div>
               </div>
 
-              <p className="mt-5 text-sm leading-6 text-slate-600">
-                {job.description}
-              </p>
+              <JobDescription description={job.description} />
 
               {job.latestAnalysisIsStale && (
                 <div role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -593,7 +594,14 @@ export default function JobsPage() {
               </FormField>
 
               <FormField label="Job description *">
+                <DescriptionFormattingToolbar
+                  textareaRef={descriptionRef}
+                  value={form.description}
+                  maxLength={MAX_JOB_CHARACTERS}
+                  onChange={(description) => setForm({ ...form, description })}
+                />
                 <textarea
+                  ref={descriptionRef}
                   required
                   rows={6}
                   maxLength={MAX_JOB_CHARACTERS}
@@ -603,8 +611,11 @@ export default function JobsPage() {
                     setForm({ ...form, description: event.target.value })
                   }
                   placeholder="Include the role's responsibilities, required skills, experience, and qualifications. Paste the original job description where available."
-                  className="form-input resize-y"
+                  className="form-input resize-y !rounded-t-none"
                 />
+                <p className="mt-2 text-xs text-slate-400">
+                  Select text before choosing bold or italic. Heading and list controls format the selected lines.
+                </p>
                 <p id="job-description-help" className={`mt-2 text-xs ${countWords(form.description) < MIN_JOB_WORDS ? "text-amber-700" : "text-slate-500"}`}>
                   {countWords(form.description)} words / {MIN_JOB_WORDS} minimum. Include specific job requirements for a useful AI comparison.
                 </p>
