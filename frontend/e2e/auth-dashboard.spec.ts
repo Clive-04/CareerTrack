@@ -84,7 +84,7 @@ async function mockCareerTrackApi(page: Page) {
           id: "application-1",
           job_id: "job-1",
           resume_id: "resume-1",
-          status: "APPLIED",
+          status: "INTERVIEW",
           date_applied: "2026-11-03",
           notes: "Submitted online",
         }]);
@@ -125,6 +125,27 @@ test("signs in, loads dashboard data, and confirms logout", async ({ page }) => 
   await expect(page.getByRole("heading", { name: "Welcome back!" })).toBeVisible();
   await expect(page.getByText("Frontend Developer", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("88/100")).toBeVisible();
+
+  await page.getByRole("complementary").getByRole("link", { name: "Saved Jobs" }).click();
+  await page.getByRole("button", { name: "Save Job" }).click();
+  const jobDialog = page.getByRole("dialog", { name: "Save a job" });
+  await expect(jobDialog).toBeVisible();
+
+  const backdropBox = await jobDialog.locator("..").boundingBox();
+  const viewport = page.viewportSize();
+  expect(backdropBox).not.toBeNull();
+  expect(Math.round(backdropBox?.x ?? -1)).toBe(0);
+  expect(Math.round(backdropBox?.y ?? -1)).toBe(0);
+  expect(Math.round(backdropBox?.width ?? -1)).toBe(viewport?.width);
+  expect(Math.round(backdropBox?.height ?? -1)).toBe(viewport?.height);
+  await jobDialog.getByRole("button", { name: "Close form" }).click();
+
+  await page.getByRole("complementary").getByRole("link", { name: "Interviews" }).click();
+  await expect(page.getByRole("heading", { name: "Applications ready to schedule" })).toBeVisible();
+  await page.getByRole("button", { name: "Schedule interview" }).click();
+  const interviewDialog = page.getByRole("dialog", { name: "Add Interview" });
+  await expect(interviewDialog.locator("select").first()).toHaveValue("application-1");
+  await interviewDialog.getByRole("button", { name: "Close form" }).click();
 
   const logoutButton = page.getByRole("complementary").getByRole("button", { name: "Log out" });
   await logoutButton.click();

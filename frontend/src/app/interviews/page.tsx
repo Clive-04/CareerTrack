@@ -11,6 +11,7 @@ import {
   X,
   CheckCircle2,
   CalendarCheck,
+  CalendarPlus,
   Trash2,
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -92,6 +93,18 @@ export default function InterviewsPage() {
     (interview) => interview.status === "Scheduled",
   ).length;
 
+  const applicationsReadyToSchedule = useMemo(() => {
+    const applicationsWithInterviews = new Set(
+      interviews.map((interview) => interview.applicationId),
+    );
+
+    return applications.filter(
+      (application) =>
+        application.status === "Interview" &&
+        !applicationsWithInterviews.has(application.id),
+    );
+  }, [applications, interviews]);
+
   const filteredInterviews = useMemo(() => {
     return interviews
       .filter((interview) => {
@@ -109,10 +122,13 @@ export default function InterviewsPage() {
       );
   }, [interviews, search, statusFilter]);
 
-  function openAddModal() {
+  function openAddModal(applicationId?: string) {
     setError("");
     setEditingId(null);
-    setForm({ ...emptyForm, applicationId: applications[0]?.id ?? "" });
+    setForm({
+      ...emptyForm,
+      applicationId: applicationId ?? applications[0]?.id ?? "",
+    });
     setShowModal(true);
   }
 
@@ -218,7 +234,7 @@ export default function InterviewsPage() {
           action={
             <button
               type="button"
-              onClick={openAddModal}
+              onClick={() => openAddModal()}
               className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
             >
               <Plus size={18} />
@@ -234,6 +250,44 @@ export default function InterviewsPage() {
           <p role="alert" className="text-sm text-red-600">
             {interviewsError}
           </p>
+        )}
+
+        {applicationsReadyToSchedule.length > 0 && (
+          <section className="app-surface overflow-hidden border-indigo-100 bg-gradient-to-r from-white to-indigo-50/60">
+            <div className="flex flex-col gap-3 border-b border-indigo-100/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+                  <CalendarPlus size={20} />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-slate-900">Applications ready to schedule</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    These applications have reached the interview stage but still need interview details.
+                  </p>
+                </div>
+              </div>
+              <span className="self-start rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700 sm:self-auto">
+                {applicationsReadyToSchedule.length} pending
+              </span>
+            </div>
+
+            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+              {applicationsReadyToSchedule.map((application) => (
+                <div key={application.id} className="rounded-xl border border-indigo-100 bg-white p-4 shadow-sm">
+                  <p className="font-semibold text-slate-900">{application.position}</p>
+                  <p className="mt-1 text-sm text-slate-500">{application.company}</p>
+                  <button
+                    type="button"
+                    onClick={() => openAddModal(application.id)}
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 transition hover:text-indigo-800"
+                  >
+                    <CalendarPlus size={16} />
+                    Schedule interview
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -461,10 +515,15 @@ export default function InterviewsPage() {
 
       {showModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-gray-900/50 p-4">
-          <div className="my-auto w-full max-w-2xl rounded-2xl bg-white shadow-xl">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="interview-form-title"
+            className="my-auto w-full max-w-2xl rounded-2xl bg-white shadow-xl"
+          >
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">
+                <h2 id="interview-form-title" className="text-lg font-bold text-gray-900">
                   {editingId !== null ? "Edit Interview" : "Add Interview"}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
