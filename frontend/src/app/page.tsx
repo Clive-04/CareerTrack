@@ -14,10 +14,14 @@ import {
   Clock3,
   CircleCheck,
   MapPin,
+  Sparkles,
+  AlertTriangle,
+  ArrowRight,
 } from "lucide-react";
 import { useApplications } from "@/components/ApplicationsProvider";
 import { useJobs } from "@/components/JobsProvider";
 import { useInterviews } from "@/components/InterviewsProvider";
+import { getAiDashboardInsights, getApplicationPipeline } from "@/lib/dashboardInsights";
 
 const statusStyles: Record<string, string> = {
   Applied: "bg-blue-50 text-blue-700",
@@ -77,6 +81,9 @@ export default function DashboardPage() {
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
+  const displayedApplications = filteredApplications.slice(0, 5);
+  const { freshAnalyses, outdatedAnalyses, strongestMatch, notAnalyzedCount } = getAiDashboardInsights(jobs);
+  const applicationPipeline = getApplicationPipeline(applications);
 
   return (
     <WorkspaceLayout>
@@ -131,6 +138,81 @@ export default function DashboardPage() {
 
             <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
               <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 xl:col-span-2">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="rounded-xl bg-violet-50 p-2.5 text-violet-600">
+                        <Sparkles size={20} />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-slate-900">AI Resume Insights</h2>
+                        <p className="mt-1 text-sm text-slate-500">Current comparisons across your saved jobs.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => router.push("/jobs")} className="text-left text-sm font-semibold text-blue-600 hover:text-blue-700">
+                    Manage analyses →
+                  </button>
+                </div>
+
+                <div className="mt-6 grid grid-cols-3 gap-3">
+                  <InsightMetric label="Fresh" value={freshAnalyses.length} style="bg-emerald-50 text-emerald-700" />
+                  <InsightMetric label="Outdated" value={outdatedAnalyses.length} style="bg-amber-50 text-amber-700" />
+                  <InsightMetric label="Not analyzed" value={notAnalyzedCount} style="bg-slate-100 text-slate-700" />
+                </div>
+
+                {strongestMatch ? (
+                  <div className="mt-5 flex flex-col justify-between gap-4 rounded-xl border border-violet-100 bg-violet-50/60 p-4 sm:flex-row sm:items-center">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-violet-600">Strongest current match</p>
+                      <p className="mt-2 font-bold text-slate-900">{strongestMatch.position}</p>
+                      <p className="mt-1 text-sm text-slate-600">{strongestMatch.company}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <p className="text-2xl font-bold text-violet-700">{strongestMatch.latestAnalysisScore}/100</p>
+                      <button type="button" onClick={() => router.push(`/jobs?analysis=${encodeURIComponent(strongestMatch.id)}&view=history`)} className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-700">
+                        View <ArrowRight size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-5 rounded-xl border border-dashed border-slate-200 p-5 text-center">
+                    <p className="text-sm font-semibold text-slate-700">No current AI match yet</p>
+                    <p className="mt-1 text-xs text-slate-500">Analyze a resume against a saved job to see your strongest match.</p>
+                    <button type="button" onClick={() => router.push("/jobs")} className="mt-3 text-sm font-semibold text-blue-600">Analyze a resume →</button>
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-amber-50 p-2.5 text-amber-600"><AlertTriangle size={20} /></div>
+                  <div>
+                    <h2 className="font-bold text-slate-900">Needs attention</h2>
+                    <p className="mt-1 text-xs text-slate-500">Outdated AI comparisons</p>
+                  </div>
+                </div>
+                {outdatedAnalyses.length ? (
+                  <div className="mt-5 space-y-3">
+                    {outdatedAnalyses.slice(0, 3).map((job) => (
+                      <div key={job.id} className="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
+                        <p className="text-sm font-semibold text-slate-800">{job.position}</p>
+                        <p className="mt-1 text-xs text-slate-500">{job.company} · Previous score {job.latestAnalysisScore}/100</p>
+                        <button type="button" onClick={() => router.push(`/jobs?analysis=${encodeURIComponent(job.id)}&view=new`)} className="mt-2 text-xs font-semibold text-amber-700 hover:text-amber-800">Analyze again →</button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">
+                    <p className="font-semibold">No outdated analyses</p>
+                    <p className="mt-1 text-xs leading-5">Your saved AI comparisons are current.</p>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 xl:col-span-2">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <h3 className="text-lg font-bold text-slate-900">
@@ -161,7 +243,7 @@ export default function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredApplications.map((application) => (
+                      {displayedApplications.map((application) => (
                         <tr
                           key={application.id}
                           className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70"
@@ -199,7 +281,7 @@ export default function DashboardPage() {
                           </td>
                         </tr>
                       ))}
-                      {filteredApplications.length === 0 && (
+                      {displayedApplications.length === 0 && (
                         <tr>
                           <td
                             colSpan={3}
@@ -277,6 +359,25 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                  <h3 className="text-lg font-bold text-slate-900">Application Pipeline</h3>
+                  <p className="mt-1 text-sm text-slate-500">Where your applications currently stand.</p>
+                  <div className="mt-5 space-y-4">
+                    {applicationPipeline.map(({ status, count, percentage }) => {
+                      return <div key={status}>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium text-slate-700">{status}</span>
+                          <span className="text-slate-500">{count}</span>
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                          <div className="h-full rounded-full bg-blue-500" style={{ width: `${percentage}%` }} />
+                        </div>
+                      </div>;
+                    })}
+                  </div>
+                  <button type="button" onClick={() => router.push("/applications")} className="mt-5 text-sm font-semibold text-blue-600 hover:text-blue-700">View application pipeline →</button>
+                </div>
+
                 <div className="rounded-2xl bg-gradient-to-br from-[#172B4D] to-[#264B80] p-6 text-white">
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
                     <GraduationCap size={23} />
@@ -309,6 +410,15 @@ function formatDashboardDate(date: string) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function InsightMetric({ label, value, style }: { label: string; value: number; style: string }) {
+  return (
+    <div className={`rounded-xl p-3 text-center ${style}`}>
+      <p className="text-2xl font-bold">{value}</p>
+      <p className="mt-1 text-xs font-medium">{label}</p>
+    </div>
+  );
 }
 
 function SummaryCard({

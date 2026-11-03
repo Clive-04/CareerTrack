@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
 import { useJobs, type Job } from "@/components/JobsProvider";
@@ -115,6 +115,25 @@ export default function JobsPage() {
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
   const [analysisJob, setAnalysisJob] = useState<Job | null>(null);
   const [analysisView, setAnalysisView] = useState<"new" | "history">("new");
+  const dashboardShortcutHandled = useRef(false);
+
+  useEffect(() => {
+    if (dashboardShortcutHandled.current || jobsLoading) return;
+    dashboardShortcutHandled.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const jobId = params.get("analysis");
+    const job = jobs.find((item) => item.id === jobId);
+    if (!job) return;
+    const requestedView = params.get("view") === "history" ? "history" : "new";
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setAnalysisView(requestedView);
+      setAnalysisJob(job);
+      window.history.replaceState(null, "", "/jobs");
+    });
+    return () => { active = false; };
+  }, [jobs, jobsLoading]);
 
   const locations = useMemo(
     () => ["All locations", ...new Set(jobs.map((job) => job.location))],
