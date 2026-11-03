@@ -34,6 +34,11 @@ async function mockCareerTrackApi(page: Page) {
       return;
     }
 
+    if (method === "POST" && path === "/auth/register") {
+      await fulfillJson(user, 201);
+      return;
+    }
+
     if (method === "GET" && path === "/auth/me") {
       await fulfillJson(user);
       return;
@@ -110,13 +115,15 @@ test("keeps the landing page public and protects the dashboard", async ({ page }
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { name: /Organize your job search/ })).toBeVisible();
   await page.getByRole("link", { name: "Create account", exact: true }).first().click();
-  await expect(page).toHaveURL(/\/login\?mode=register$/);
+  await expect(page).toHaveURL(/\/register$/);
   await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
   await expect(page.locator(".auth-mode-enter-forward")).toBeVisible();
-  await page.getByRole("button", { name: "Already have an account? Sign in" }).click();
+  await page.getByRole("link", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   await expect(page.locator(".auth-mode-enter-back")).toBeVisible();
-  await page.getByRole("button", { name: "Need an account? Create one" }).click();
+  await page.getByRole("link", { name: "Create one", exact: true }).click();
+  await expect(page).toHaveURL(/\/register$/);
   await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
   await expect(page.getByLabel("First name")).toBeVisible();
   await expect(page.getByLabel("Last name")).toBeVisible();
@@ -146,12 +153,29 @@ test("keeps the landing page public and protects the dashboard", async ({ page }
   expect(response?.headers()["x-content-type-options"]).toBe("nosniff");
 });
 
+test("registers a new user through the dedicated registration page", async ({ page }) => {
+  await mockCareerTrackApi(page);
+  await page.goto("/register");
+
+  await page.getByLabel("First name").fill("Clive");
+  await page.getByLabel("Last name").fill("Tester");
+  await page.getByLabel("Email").fill("clive@example.com");
+  await page.getByLabel("Password", { exact: true }).fill("correct-password");
+  await page.getByRole("button", { name: "Show password" }).click();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "text");
+  await page.getByLabel("Confirm password").fill("correct-password");
+  await page.getByRole("button", { name: "Create account" }).click();
+
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole("heading", { name: "Welcome back!" })).toBeVisible();
+});
+
 test("signs in, loads dashboard data, and confirms logout", async ({ page }) => {
   await mockCareerTrackApi(page);
   await page.goto("/login");
 
   await page.getByLabel("Email").fill("clive@example.com");
-  await page.getByLabel("Password").fill("correct-password");
+  await page.getByLabel("Password", { exact: true }).fill("correct-password");
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
