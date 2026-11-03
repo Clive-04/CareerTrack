@@ -105,10 +105,12 @@ async function mockCareerTrackApi(page: Page) {
 }
 
 test("redirects signed-out users to login", async ({ page }) => {
-  await page.goto("/");
+  const response = await page.goto("/");
 
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  expect(response?.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
+  expect(response?.headers()["x-content-type-options"]).toBe("nosniff");
 });
 
 test("signs in, loads dashboard data, and confirms logout", async ({ page }) => {

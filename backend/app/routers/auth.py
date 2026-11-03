@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models import User
-from app.schemas.auth import UserLogin, UserRegister, UserResponse
+from app.schemas.auth import AccessTokenResponse, UserLogin, UserRegister, UserResponse
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.dependencies import get_current_user
 
@@ -13,6 +13,8 @@ router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
 )
+
+INVALID_PASSWORD_HASH = hash_password("invalid-password-used-only-for-timing")
 
 
 @router.post(
@@ -53,19 +55,20 @@ def register_user(
         last_name=new_user.last_name,
     )
 
-@router.post("/login")
+@router.post("/login", response_model=AccessTokenResponse)
 def login_user(
     user_data: UserLogin,
     db: Session = Depends(get_db),
 ):
-    user=db.scalar(
+    user = db.scalar(
         select(User).where(User.email == user_data.email)
     )
-
-    if not user or not verify_password(
+    password_matches = verify_password(
         user_data.password,
-        user.password_hash
-    ):
+        user.password_hash if user else INVALID_PASSWORD_HASH,
+    )
+
+    if user is None or not password_matches:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -73,10 +76,7 @@ def login_user(
 
     access_token = create_access_token(str(user.id))
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-    }
+    return AccessTokenResponse(access_token=access_token)
 
 @router.get("/me", response_model=UserResponse)
 def get_my_profile(

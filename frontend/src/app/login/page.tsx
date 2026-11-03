@@ -48,8 +48,8 @@ export default function LoginPage() {
       return;
     }
 
-    if (isRegistering && form.password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (isRegistering && form.password.length < 12) {
+      setError("Password must be at least 12 characters.");
       return;
     }
 
@@ -113,6 +113,7 @@ export default function LoginPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="First name">
                 <input
+                  autoComplete="given-name"
                   required
                   value={form.firstName}
                   onChange={(event) =>
@@ -123,6 +124,7 @@ export default function LoginPage() {
               </Field>
               <Field label="Last name">
                 <input
+                  autoComplete="family-name"
                   required
                   value={form.lastName}
                   onChange={(event) =>
@@ -136,6 +138,7 @@ export default function LoginPage() {
 
           <Field label="Email">
             <input
+              autoComplete="email"
               required
               type="email"
               value={form.email}
@@ -148,6 +151,8 @@ export default function LoginPage() {
 
           <Field label="Password">
             <input
+              autoComplete={isRegistering ? "new-password" : "current-password"}
+              maxLength={72}
               required
               type="password"
               value={form.password}

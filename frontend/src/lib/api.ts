@@ -122,6 +122,9 @@ export async function apiRequest<T>(
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
+      cache: options.cache ?? "no-store",
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
       signal: options.signal ?? AbortSignal.timeout(30000),
       headers: {
         ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
@@ -291,7 +294,10 @@ export function saveResumeDocument(token: string, id: string | null, metadata: R
 
 export async function downloadResumeFile(token: string, id: string) {
   const response = await fetch(`${API_BASE_URL}/resumes/${id}/download`, {
+    cache: "no-store",
+    credentials: "omit",
     headers: { Authorization: `Bearer ${token}` },
+    referrerPolicy: "no-referrer",
   });
   if (!response.ok) {
     const error = await response.json().catch(() => null);

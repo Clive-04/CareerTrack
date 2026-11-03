@@ -1,5 +1,7 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy import text
 
 from app.core.config import settings
@@ -19,19 +21,37 @@ app = FastAPI(
     title="CareerTrack API",
     description="API for the CareerTrack job application and resume management platform.",
     version="0.1.0",
+    docs_url=None if settings.ENVIRONMENT == "production" else "/docs",
+    redoc_url=None if settings.ENVIRONMENT == "production" else "/redoc",
+    openapi_url=None if settings.ENVIRONMENT == "production" else "/openapi.json",
 )
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        origin.strip()
-        for origin in settings.FRONTEND_ORIGINS.split(",")
-        if origin.strip()
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    TrustedHostMiddleware,
+    allowed_hosts=settings.allowed_hosts,
 )
+if settings.FORCE_HTTPS:
+    app.add_middleware(HTTPSRedirectMiddleware)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.frontend_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if request.url.path.startswith("/auth") or "authorization" in request.headers:
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 app.include_router(auth_router)
 app.include_router(jobs_router)
@@ -52,10 +72,9 @@ def health_check():
 
 @app.get("/health/database")
 def database_health_check(db: Session = Depends(get_db)):
-    result = db.execute(text("SELECT 1"))
+    db.execute(text("SELECT 1"))
 
     return {
         "status": "healthy",
         "database": "connected",
-        "result": result.scalar()
     }
