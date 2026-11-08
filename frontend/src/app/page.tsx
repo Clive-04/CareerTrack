@@ -23,24 +23,32 @@ const features = [
     title: "Save every opportunity",
     description: "Keep job details, links, salary information, and requirements together in one private workspace.",
     style: "bg-indigo-50 text-indigo-600",
+    accent: "79 70 229",
+    motion: "swing",
   },
   {
     icon: BarChart3,
     title: "Track your applications",
     description: "Follow each application from saved to applied, interview, offer, or rejection without losing context.",
     style: "bg-cyan-50 text-cyan-700",
+    accent: "8 145 178",
+    motion: "step",
   },
   {
     icon: FileSearch,
     title: "Compare with AI",
     description: "Use Gemini to compare your selected resume with a detailed job description and identify useful improvements.",
     style: "bg-violet-50 text-violet-600",
+    accent: "124 58 237",
+    motion: "spark",
   },
   {
     icon: CalendarCheck2,
     title: "Prepare for interviews",
     description: "Schedule interviews, record important details, and keep upcoming conversations visible.",
     style: "bg-emerald-50 text-emerald-600",
+    accent: "5 150 105",
+    motion: "check",
   },
 ];
 
@@ -88,6 +96,7 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#f8f9fc] text-slate-900">
+      <a href="#landing-content" className="app-skip-link">Skip to main content</a>
       <header className="relative z-20 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8">
           <Link href="/" className="flex items-center gap-3" aria-label="CareerTrack home">
@@ -119,7 +128,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <section className="relative">
+      <section id="landing-content" tabIndex={-1} className="relative outline-none">
         <div aria-hidden="true" className="absolute -left-40 top-20 h-96 w-96 rounded-full bg-indigo-200/35 blur-3xl" />
         <div aria-hidden="true" className="absolute -right-44 top-2 h-[30rem] w-[30rem] rounded-full bg-cyan-100/60 blur-3xl" />
         <div className="relative mx-auto grid max-w-7xl gap-14 px-5 pb-24 pt-20 sm:px-8 sm:pt-28 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:pb-32">
@@ -161,16 +170,23 @@ export default function LandingPage() {
             <p className="mt-4 text-base leading-7 text-slate-600">Replace scattered notes and spreadsheets with a workspace designed around your next opportunity.</p>
           </div>
           <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map(({ icon: Icon, title, description, style }, index) => (
+            {features.map(({ icon: Icon, title, description, style, accent, motion }, index) => (
               <article
                 key={title}
                 data-landing-reveal
-                style={{ "--landing-reveal-delay": `${index * 70}ms` } as CSSProperties}
-                className="app-surface app-surface-interactive p-6"
+                style={{
+                  "--landing-reveal-delay": `${index * 70}ms`,
+                  "--feature-accent": accent,
+                } as CSSProperties}
+                className={`landing-feature-card landing-feature-${motion}`}
               >
-                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${style}`}><Icon size={22} /></div>
-                <h3 className="mt-5 text-lg font-bold tracking-[-0.02em] text-slate-900">{title}</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+                <div className="relative z-10">
+                  <div className={`landing-feature-icon flex h-12 w-12 items-center justify-center rounded-2xl ${style}`}>
+                    <Icon size={22} />
+                  </div>
+                  <h3 className="mt-5 text-lg font-bold tracking-[-0.02em] text-slate-900">{title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+                </div>
               </article>
             ))}
           </div>
@@ -190,9 +206,9 @@ export default function LandingPage() {
                 key={number}
                 data-landing-reveal
                 style={{ "--landing-reveal-delay": `${index * 80}ms` } as CSSProperties}
-                className="app-surface flex gap-5 p-6 sm:gap-7 sm:p-8"
+                className="landing-step-card app-surface flex gap-5 p-6 sm:gap-7 sm:p-8"
               >
-                <span className="text-2xl font-bold tracking-[-0.05em] text-indigo-300">{number}</span>
+                <span className="landing-step-number text-2xl font-bold tracking-[-0.05em] text-indigo-300">{number}</span>
                 <div>
                   <h3 className="text-xl font-bold tracking-[-0.025em] text-slate-900">{title}</h3>
                   <p className="mt-2 leading-7 text-slate-600">{description}</p>
@@ -204,14 +220,25 @@ export default function LandingPage() {
       </section>
 
       <section id="privacy" className="px-5 pb-24 sm:px-8 sm:pb-28">
-        <div data-landing-reveal className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,#111827_0%,#172554_60%,#164e63_120%)] px-6 py-14 text-white shadow-2xl shadow-slate-300/50 sm:px-12 lg:flex lg:items-center lg:justify-between lg:px-16 lg:py-16">
-          <div aria-hidden="true" className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div data-landing-reveal="privacy" className="landing-privacy-card relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] px-6 py-14 text-white shadow-2xl shadow-slate-300/50 sm:px-12 lg:flex lg:items-center lg:justify-between lg:px-16 lg:py-16">
+          <div aria-hidden="true" className="landing-privacy-orb landing-privacy-orb-one" />
+          <div aria-hidden="true" className="landing-privacy-orb landing-privacy-orb-two" />
           <div className="relative max-w-2xl">
             <div className="flex items-center gap-3 text-cyan-300"><ShieldCheck size={22} /><span className="text-sm font-bold uppercase tracking-[0.16em]">Privacy by purpose</span></div>
             <h2 className="mt-5 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">Your career information stays personal.</h2>
             <p className="mt-4 max-w-xl leading-7 text-slate-300">CareerTrack is a personal tracker—not a public job board. Your resumes and job-search records belong to your account and are used for AI comparison only when you request an analysis.</p>
+            <div className="mt-7 flex flex-wrap gap-3 text-sm font-semibold text-slate-200">
+              <span className="landing-privacy-pill"><Check size={14} /> Account-only access</span>
+              <span className="landing-privacy-pill"><Check size={14} /> AI only when requested</span>
+            </div>
           </div>
-          <div className="relative mt-8 flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl border border-white/10 bg-white/10 text-cyan-300 lg:mt-0"><LockKeyhole size={38} /></div>
+          <div className="landing-lock-stage relative mt-10 flex h-36 w-36 shrink-0 items-center justify-center lg:mr-5 lg:mt-0">
+            <span aria-hidden="true" className="landing-lock-orbit landing-lock-orbit-outer" />
+            <span aria-hidden="true" className="landing-lock-orbit landing-lock-orbit-inner" />
+            <div className="landing-lock-badge relative flex h-24 w-24 items-center justify-center rounded-3xl border border-white/15 bg-white/10 text-cyan-300 backdrop-blur-sm">
+              <LockKeyhole className="landing-lock-icon" size={38} />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -237,9 +264,9 @@ export default function LandingPage() {
 
 function DashboardPreview() {
   return (
-    <div data-landing-reveal style={{ "--landing-reveal-delay": "120ms" } as CSSProperties} className="relative mx-auto w-full max-w-xl lg:mr-0">
+    <div data-landing-reveal="preview" style={{ "--landing-reveal-delay": "120ms" } as CSSProperties} className="landing-preview relative mx-auto w-full max-w-xl lg:mr-0">
       <div aria-hidden="true" className="absolute inset-8 rounded-[2rem] bg-indigo-500/15 blur-3xl" />
-      <div className="relative overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/95 p-3 shadow-[0_30px_80px_rgb(15_23_42/18%)] backdrop-blur sm:p-4">
+      <div className="landing-preview-frame relative overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/95 p-3 shadow-[0_30px_80px_rgb(15_23_42/18%)] backdrop-blur sm:p-4">
         <div className="flex items-center gap-2 border-b border-slate-100 px-2 pb-3">
           <span className="h-2.5 w-2.5 rounded-full bg-rose-300" /><span className="h-2.5 w-2.5 rounded-full bg-amber-300" /><span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
           <span className="ml-2 text-[10px] font-medium text-slate-400">Your CareerTrack dashboard</span>

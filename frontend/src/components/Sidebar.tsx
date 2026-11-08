@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -35,6 +36,26 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    };
+
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      document.body.style.overflow = previousOverflow;
+      document.querySelector<HTMLButtonElement>('[aria-label="Open navigation menu"]')?.focus();
+    };
+  }, [mobileMenuOpen, setMobileMenuOpen]);
 
   if (!user) return null;
 
@@ -54,9 +75,8 @@ export default function Sidebar({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-hidden bg-[linear-gradient(165deg,#111827_0%,#111c36_52%,#0b1120_100%)] text-white shadow-2xl shadow-slate-950/15 transition-transform duration-200 lg:translate-x-0 ${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        aria-label="Primary navigation"
+        className={`app-sidebar fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-hidden bg-[linear-gradient(165deg,#111827_0%,#111c36_52%,#0b1120_100%)] text-white shadow-2xl shadow-slate-950/15 ${mobileMenuOpen ? "app-sidebar-open" : ""}`}
       >
         <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-indigo-500/15 blur-3xl" />
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl" />
@@ -74,6 +94,7 @@ export default function Sidebar({
           </Link>
 
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={closeMobileMenu}
             aria-label="Close navigation menu"

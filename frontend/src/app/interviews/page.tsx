@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   CalendarCheck,
   CalendarPlus,
+  Pencil,
   Trash2,
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -24,6 +25,8 @@ import {
   type InterviewType,
 } from "@/components/InterviewsProvider";
 import useDialogControls from "@/hooks/useDialogControls";
+import ExpandableText from "@/components/ExpandableText";
+import MetricCard from "@/components/MetricCard";
 
 const emptyForm = {
   applicationId: "",
@@ -251,7 +254,7 @@ export default function InterviewsPage() {
           <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading interviews...</div>
         )}
         {interviewsError && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="app-notice-error">
             {interviewsError}
           </p>
         )}
@@ -283,7 +286,7 @@ export default function InterviewsPage() {
                   <button
                     type="button"
                     onClick={() => openAddModal(application.id)}
-                    className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 transition hover:text-indigo-800"
+                    className="app-button-text mt-4 !text-sm"
                   >
                     <CalendarPlus size={16} />
                     Schedule interview
@@ -300,46 +303,37 @@ export default function InterviewsPage() {
               label: "Total Interviews",
               value: interviews.length,
               icon: CalendarDays,
-              color: "bg-blue-50 text-blue-600",
+              tone: "indigo" as const,
             },
             {
               label: "Upcoming",
               value: upcomingCount,
               icon: Clock,
-              color: "bg-amber-50 text-amber-600",
+              tone: "amber" as const,
             },
             {
               label: "Completed",
               value: completedCount,
               icon: CheckCircle2,
-              color: "bg-green-50 text-green-600",
+              tone: "emerald" as const,
             },
             {
               label: "Scheduled",
               value: scheduledCount,
               icon: CalendarCheck,
-              color: "bg-purple-50 text-purple-600",
+              tone: "violet" as const,
             },
           ].map((card) => {
             const Icon = card.icon;
 
             return (
-              <div
+              <MetricCard
                 key={card.label}
-                className="app-surface app-surface-interactive p-5"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-500">{card.label}</p>
-                  <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-lg ${card.color}`}
-                  >
-                    <Icon size={20} />
-                  </div>
-                </div>
-                <p className="mt-4 text-3xl font-bold text-gray-900">
-                  {card.value}
-                </p>
-              </div>
+                label={card.label}
+                value={card.value}
+                icon={Icon}
+                tone={card.tone}
+              />
             );
           })}
         </section>
@@ -356,7 +350,7 @@ export default function InterviewsPage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <div className="relative">
+              <label className="app-search-control relative flex items-center rounded-xl border border-slate-200 bg-white">
                 <Search
                   size={17}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -366,9 +360,9 @@ export default function InterviewsPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search interviews..."
-                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-indigo-500 sm:w-56"
+                  className="w-full rounded-xl bg-transparent py-2.5 pl-9 pr-3 text-sm outline-none sm:w-56"
                 />
-              </div>
+              </label>
 
               <select
                 aria-label="Filter interviews by status"
@@ -402,7 +396,7 @@ export default function InterviewsPage() {
               filteredInterviews.map((interview) => (
                 <div
                   key={interview.id}
-                  className="flex flex-col gap-4 p-5 transition hover:bg-gray-50/70 xl:flex-row xl:items-center xl:justify-between"
+                  className="flex flex-col gap-4 p-5 transition hover:bg-slate-50/70 xl:flex-row xl:items-center xl:justify-between"
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
@@ -465,9 +459,11 @@ export default function InterviewsPage() {
                       )}
 
                       {interview.notes && (
-                        <p className="mt-1 text-xs text-gray-500">
-                          Notes: {interview.notes}
-                        </p>
+                        <ExpandableText
+                          text={interview.notes}
+                          label="Notes"
+                          className="mt-1 max-w-2xl text-xs leading-5 text-slate-500"
+                        />
                       )}
                     </div>
                   </div>
@@ -492,8 +488,9 @@ export default function InterviewsPage() {
                     <button
                       type="button"
                       onClick={() => openEditModal(interview)}
-                      className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
+                      className="app-button-secondary app-button-compact w-24"
                     >
+                      <Pencil size={15} />
                       Edit
                     </button>
 
@@ -501,10 +498,10 @@ export default function InterviewsPage() {
                       type="button"
                       onClick={() => setInterviewToDelete(interview)}
                       aria-label={`Delete ${interview.company} interview`}
-                      title="Delete interview"
-                      className="rounded-lg border border-red-200 p-2 text-red-500 transition hover:bg-red-50 hover:text-red-700"
+                      className="app-button-danger-outline app-button-compact w-24"
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={15} />
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -512,8 +509,13 @@ export default function InterviewsPage() {
             )}
           </div>
 
-          <div className="border-t border-gray-100 px-5 py-4 text-sm text-gray-500">
-            Showing {filteredInterviews.length} of {interviews.length} interviews
+          <div className="app-results-footer flex flex-wrap items-center justify-between gap-3">
+            <span>Showing {filteredInterviews.length} of {interviews.length} interviews</span>
+            {(search || statusFilter !== "All") && (
+              <button type="button" onClick={() => { setSearch(""); setStatusFilter("All"); }} className="app-button-text">
+                Clear filters
+              </button>
+            )}
           </div>
         </section>
       </div>
@@ -526,12 +528,12 @@ export default function InterviewsPage() {
             aria-labelledby="interview-form-title"
             className="app-modal-panel my-auto max-w-2xl"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+            <div className={`flex items-center justify-between border-b px-6 py-5 ${editingId !== null ? "border-amber-200 bg-amber-50/70" : "border-indigo-200 bg-indigo-50/70"}`}>
               <div>
-                <h2 id="interview-form-title" className="text-lg font-bold text-gray-900">
+                <h2 id="interview-form-title" className={`text-lg font-bold ${editingId !== null ? "text-amber-950" : "text-indigo-950"}`}>
                   {editingId !== null ? "Edit Interview" : "Add Interview"}
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-slate-600">
                   Enter the details of your interview.
                 </p>
               </div>
@@ -540,7 +542,7 @@ export default function InterviewsPage() {
                 type="button"
                 onClick={closeModal}
                 aria-label="Close form"
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="app-icon-button app-icon-button-ghost shrink-0"
               >
                 <X size={20} />
               </button>
@@ -690,7 +692,7 @@ export default function InterviewsPage() {
                 </p>
               )}
 
-              <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end">
+              <div className="app-modal-footer">
                 <button
                   type="button"
                   onClick={closeModal}
@@ -717,7 +719,7 @@ export default function InterviewsPage() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
               <Trash2 size={22} />
             </div>
-            <h2 id="delete-interview-title" className="mt-4 text-lg font-bold text-gray-900">
+            <h2 id="delete-interview-title" className="mx-auto mt-4 w-fit rounded-lg bg-red-50 px-3 py-2 text-lg font-bold text-red-800">
               Delete interview?
             </h2>
             <p id="delete-interview-description" className="mt-2 text-sm text-gray-500">
@@ -738,7 +740,7 @@ export default function InterviewsPage() {
               <button
                 type="button"
                 onClick={confirmDeleteInterview}
-                className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
+                className="app-button-danger"
               >
                 Delete interview
               </button>

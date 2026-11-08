@@ -25,6 +25,8 @@ import {
   type SkillCategory,
 } from "@/components/SkillsProvider";
 import useDialogControls from "@/hooks/useDialogControls";
+import ExpandableText from "@/components/ExpandableText";
+import MetricCard from "@/components/MetricCard";
 
 const categories: SkillCategory[] = [
   "Programming",
@@ -184,26 +186,26 @@ export default function SkillsPage() {
   function getProficiencyColor(proficiency: Proficiency) {
     switch (proficiency) {
       case "Beginner":
-        return "bg-gray-100 text-gray-700";
+        return "bg-slate-400";
       case "Intermediate":
-        return "bg-blue-50 text-blue-700";
+        return "bg-blue-500";
       case "Advanced":
-        return "bg-purple-50 text-purple-700";
+        return "bg-indigo-500";
       case "Expert":
-        return "bg-green-50 text-green-700";
+        return "bg-emerald-500";
     }
   }
 
-  function getProficiencyWidth(proficiency: Proficiency) {
+  function getProficiencyLevel(proficiency: Proficiency) {
     switch (proficiency) {
       case "Beginner":
-        return "25%";
+        return 1;
       case "Intermediate":
-        return "50%";
+        return 2;
       case "Advanced":
-        return "75%";
+        return 3;
       case "Expert":
-        return "100%";
+        return 4;
     }
   }
 
@@ -216,6 +218,7 @@ export default function SkillsPage() {
           description="Organize your skills and track your proficiency."
           action={
             <button
+              type="button"
               onClick={openAddModal}
               className="app-button-primary self-start"
             >
@@ -225,7 +228,7 @@ export default function SkillsPage() {
           }
         />
         {isLoading && <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading skills...</div>}
-        {skillsError && <p role="alert" className="text-sm text-red-600">{skillsError}</p>}
+        {skillsError && <p role="alert" className="app-notice-error mt-4">{skillsError}</p>}
       </div>
 
       <div className="space-y-6 p-5 sm:p-8">
@@ -235,46 +238,37 @@ export default function SkillsPage() {
               label: "Total Skills",
               value: skills.length,
               icon: Award,
-              color: "bg-blue-50 text-blue-600",
+              tone: "indigo" as const,
             },
             {
               label: "Categories",
               value: categoryCount,
               icon: Layers,
-              color: "bg-purple-50 text-purple-600",
+              tone: "blue" as const,
             },
             {
               label: "Advanced / Expert",
               value: advancedCount,
               icon: CheckCircle2,
-              color: "bg-green-50 text-green-600",
+              tone: "emerald" as const,
             },
             {
               label: "Avg. Experience",
               value: `${averageExperience} yrs`,
               icon: BriefcaseBusiness,
-              color: "bg-amber-50 text-amber-600",
+              tone: "amber" as const,
             },
           ].map((card) => {
             const Icon = card.icon;
 
             return (
-              <div
+              <MetricCard
                 key={card.label}
-                className="app-surface app-surface-interactive p-5"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-500">{card.label}</p>
-                  <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-lg ${card.color}`}
-                  >
-                    <Icon size={20} />
-                  </div>
-                </div>
-                <p className="mt-4 text-3xl font-bold text-gray-900">
-                  {card.value}
-                </p>
-              </div>
+                label={card.label}
+                value={card.value}
+                icon={Icon}
+                tone={card.tone}
+              />
             );
           })}
         </div>
@@ -289,7 +283,7 @@ export default function SkillsPage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <div className="relative">
+              <label className="app-search-control relative flex items-center rounded-xl border border-slate-200 bg-white">
                 <Search
                   size={17}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -299,9 +293,9 @@ export default function SkillsPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search skills..."
-                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-indigo-500 sm:w-52"
+                  className="w-full rounded-xl bg-transparent py-2.5 pl-9 pr-3 text-sm outline-none sm:w-52"
                 />
-              </div>
+              </label>
 
               <select
                 aria-label="Filter skills by category"
@@ -347,73 +341,73 @@ export default function SkillsPage() {
             ) : (
               filteredSkills.map((skill) => {
                 const Icon = getCategoryIcon(skill.category);
+                const proficiencyLevel = getProficiencyLevel(skill.proficiency);
 
                 return (
                   <article
                     key={skill.id}
-                    className="rounded-xl border border-gray-200 p-5 transition hover:border-indigo-200 hover:shadow-md"
+                    className="app-data-card flex h-full flex-col !p-5"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                        <Icon size={22} />
+                    <div className="flex items-start gap-3.5">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                        <Icon size={21} strokeWidth={1.9} />
                       </div>
 
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${getProficiencyColor(skill.proficiency)}`}
-                      >
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-lg font-semibold tracking-[-0.015em] text-slate-900" title={skill.name}>
+                          {skill.name}
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">{skill.category}</p>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-1.5 pt-1 text-xs font-medium text-slate-600">
+                        <span className={`h-2 w-2 rounded-full ${getProficiencyColor(skill.proficiency)}`} />
                         {skill.proficiency}
-                      </span>
-                    </div>
-
-                    <h3 className="mt-4 text-lg font-semibold text-gray-900">
-                      {skill.name}
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {skill.category}
-                    </p>
-
-                    <div className="mt-4">
-                      <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
-                        <span>Proficiency</span>
-                        <span>{getProficiencyWidth(skill.proficiency)}</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-                        <div
-                          className="h-full rounded-full bg-blue-500 transition-all"
-                          style={{
-                            width: getProficiencyWidth(skill.proficiency),
-                          }}
-                        />
                       </div>
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between text-sm">
-                      <span className="text-gray-500">Experience</span>
-                      <span className="font-medium text-gray-700">
-                        {skill.yearsExperience}{" "}
-                        {skill.yearsExperience === 1 ? "year" : "years"}
-                      </span>
+                    <div className="mt-5 border-y border-slate-100 py-4">
+                      <div className="flex items-center justify-between gap-4 text-sm">
+                        <span className="text-slate-500">Experience</span>
+                        <span className="font-semibold text-slate-800">
+                          {skill.yearsExperience} {skill.yearsExperience === 1 ? "year" : "years"}
+                        </span>
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="mb-2 flex items-center justify-between text-xs">
+                          <span className="text-slate-500">Proficiency</span>
+                          <span className="text-slate-400">Level {proficiencyLevel} of 4</span>
+                        </div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100" aria-label={`${skill.proficiency} proficiency, level ${proficiencyLevel} of 4`}>
+                          <div className="h-full rounded-full bg-indigo-500 transition-[width] duration-300" style={{ width: `${proficiencyLevel * 25}%` }} />
+                        </div>
+                      </div>
                     </div>
 
                     {skill.notes && (
-                      <p className="mt-3 line-clamp-2 text-sm text-gray-500">
-                        {skill.notes}
-                      </p>
+                      <div className="mt-4">
+                        <p className="mb-1.5 text-xs font-medium text-slate-400">Notes</p>
+                        <ExpandableText text={skill.notes} className="text-sm leading-6 text-slate-600" />
+                      </div>
                     )}
 
-                    <div className="mt-5 flex gap-2 border-t border-gray-100 pt-4">
+                    <div className="app-card-actions !mt-auto">
                       <button
+                        type="button"
                         onClick={() => openEditModal(skill)}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+                        className="app-button-secondary flex-1"
                       >
                         <Pencil size={15} />
-                        Edit
+                        Edit skill
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => setSkillToDelete(skill)}
                         aria-label={`Delete ${skill.name}`}
-                        className="rounded-lg border border-gray-200 p-2 text-gray-500 transition hover:bg-red-50 hover:text-red-600"
+                        title="Delete skill"
+                        className="app-icon-button hover:!border-red-200 hover:!bg-red-50 hover:!text-red-600"
                       >
                         <Trash2 size={17} />
                       </button>
@@ -424,8 +418,13 @@ export default function SkillsPage() {
             )}
           </div>
 
-          <div className="border-t border-gray-100 px-5 py-4 text-sm text-gray-500">
-            Showing {filteredSkills.length} of {skills.length} skills
+          <div className="app-results-footer flex flex-wrap items-center justify-between gap-3">
+            <span>Showing {filteredSkills.length} of {skills.length} skills</span>
+            {(search || categoryFilter !== "All" || proficiencyFilter !== "All") && (
+              <button type="button" onClick={() => { setSearch(""); setCategoryFilter("All"); setProficiencyFilter("All"); }} className="app-button-text">
+                Clear filters
+              </button>
+            )}
           </div>
         </section>
       </div>
@@ -433,20 +432,21 @@ export default function SkillsPage() {
       {showModal && (
         <div className="app-modal-backdrop app-modal-backdrop-scroll">
           <div role="dialog" aria-modal="true" aria-labelledby="skill-form-title" className="app-modal-panel my-auto max-w-xl">
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+            <div className={`flex items-center justify-between border-b px-6 py-5 ${editingId !== null ? "border-amber-200 bg-amber-50/70" : "border-indigo-200 bg-indigo-50/70"}`}>
               <div>
-                <h2 id="skill-form-title" className="text-lg font-bold text-gray-900">
+                <h2 id="skill-form-title" className={`text-lg font-bold ${editingId !== null ? "text-amber-950" : "text-indigo-950"}`}>
                   {editingId !== null ? "Edit Skill" : "Add Skill"}
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-slate-600">
                   Enter your skill and experience details.
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
                 aria-label="Close form"
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="app-icon-button app-icon-button-ghost shrink-0"
               >
                 <X size={20} />
               </button>
@@ -560,7 +560,7 @@ export default function SkillsPage() {
                 </p>
               )}
 
-              <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end">
+              <div className="app-modal-footer">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
@@ -584,11 +584,11 @@ export default function SkillsPage() {
         <div className="app-modal-backdrop !z-[80]">
           <div role="alertdialog" aria-modal="true" aria-labelledby="delete-skill-title" aria-describedby="delete-skill-description" className="app-modal-panel max-w-md p-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600"><Trash2 size={22} /></div>
-            <h2 id="delete-skill-title" className="mt-4 text-lg font-bold text-gray-900">Delete skill?</h2>
+            <h2 id="delete-skill-title" className="mx-auto mt-4 w-fit rounded-lg bg-red-50 px-3 py-2 text-lg font-bold text-red-800">Delete skill?</h2>
             <p id="delete-skill-description" className="mt-2 text-sm text-gray-500">Delete &quot;{skillToDelete.name}&quot; from your skills?</p>
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
               <button type="button" onClick={() => setSkillToDelete(null)} className="app-button-secondary">Cancel</button>
-              <button type="button" onClick={confirmDeleteSkill} className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">Delete skill</button>
+              <button type="button" onClick={confirmDeleteSkill} className="app-button-danger">Delete skill</button>
             </div>
           </div>
         </div>

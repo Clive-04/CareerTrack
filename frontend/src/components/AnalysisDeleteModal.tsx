@@ -19,12 +19,12 @@ export default function AnalysisDeleteModal({
         <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
           <Trash2 size={21} aria-hidden="true" />
         </div>
-        <h3 id="delete-analysis-title" className="mt-5 text-lg font-bold">Delete this saved analysis?</h3>
+        <h3 id="delete-analysis-title" className="mx-auto mt-5 w-fit rounded-lg bg-red-50 px-3 py-2 text-lg font-bold text-red-800">Delete this saved analysis?</h3>
         <p id="delete-analysis-description" className="mt-2 text-sm leading-6 text-slate-600">The result for {resumeName} will be permanently removed. Your resume and saved job will remain.</p>
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <div className="mt-6 flex flex-col-reverse justify-center gap-3 sm:flex-row">
-          <button type="button" disabled={deleting} onClick={onCancel} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Cancel</button>
-          <button type="button" disabled={deleting} onClick={onConfirm} className="rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white hover:bg-red-700 disabled:opacity-50">{deleting ? "Deleting..." : "Delete analysis"}</button>
+          <button type="button" disabled={deleting} onClick={onCancel} className="app-button-secondary">Cancel</button>
+          <button type="button" disabled={deleting} onClick={onConfirm} className="app-button-danger">{deleting ? "Deleting..." : "Delete analysis"}</button>
         </div>
       </section>
     </div>

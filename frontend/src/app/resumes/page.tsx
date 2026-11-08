@@ -22,6 +22,9 @@ import WorkspaceLayout from "@/components/WorkspaceLayout";
 import { useResumes, type Resume } from "@/components/ResumesProvider";
 import { useSkills } from "@/components/SkillsProvider";
 import useDialogControls from "@/hooks/useDialogControls";
+import ExpandableText from "@/components/ExpandableText";
+import ExpandableSkillList from "@/components/ExpandableSkillList";
+import MetricCard from "@/components/MetricCard";
 
 const emptyForm = {
   name: "",
@@ -190,55 +193,14 @@ export default function ResumesPage() {
             </button>
           }
         />
-        {message && !showModal && <p role="alert" className="text-sm text-red-600">{message}</p>}
+        {message && !showModal && <p role="alert" className="app-notice-error">{message}</p>}
         {isLoading && <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading resumes...</div>}
-        {resumesError && <p role="alert" className="text-sm text-red-600">{resumesError}</p>}
+        {resumesError && <p role="alert" className="app-notice-error">{resumesError}</p>}
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <div className="app-surface app-surface-interactive p-5">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">Total Resumes</p>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                <FileText size={20} />
-              </div>
-            </div>
-            <p className="mt-4 text-3xl font-bold text-gray-900">
-              {resumes.length}
-            </p>
-            <p className="mt-1 text-xs text-gray-500">
-              Resume versions in your library
-            </p>
-          </div>
-
-          <div className="app-surface app-surface-interactive p-5">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">Target Roles</p>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
-                <BriefcaseBusiness size={20} />
-              </div>
-            </div>
-            <p className="mt-4 text-3xl font-bold text-gray-900">
-              {roles.length}
-            </p>
-            <p className="mt-1 text-xs text-gray-500">
-              Different roles covered
-            </p>
-          </div>
-
-          <div className="app-surface app-surface-interactive p-5">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">Default Resume</p>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-                <Star size={20} />
-              </div>
-            </div>
-            <p className="mt-4 truncate text-lg font-bold text-gray-900">
-              {defaultResume?.name ?? "Not set"}
-            </p>
-            <p className="mt-1 text-xs text-gray-500">
-              Your preferred resume version
-            </p>
-          </div>
+          <MetricCard label="Total Resumes" value={resumes.length} icon={FileText} tone="indigo" />
+          <MetricCard label="Target Roles" value={roles.length} icon={BriefcaseBusiness} tone="blue" />
+          <MetricCard label="Default Resume" value={defaultResume?.name ?? "Not set"} icon={Star} tone="amber" compactValue />
         </section>
 
         <section className="app-surface overflow-hidden">
@@ -253,7 +215,7 @@ export default function ResumesPage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <div className="relative">
+              <label className="app-search-control relative flex items-center rounded-xl border border-slate-200 bg-white">
                 <Search
                   size={17}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -263,9 +225,9 @@ export default function ResumesPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search resumes..."
-                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-indigo-500 sm:w-56"
+                  className="w-full rounded-xl bg-transparent py-2.5 pl-9 pr-3 text-sm outline-none sm:w-56"
                 />
-              </div>
+              </label>
 
               <select
                 aria-label="Filter resumes by target role"
@@ -298,34 +260,34 @@ export default function ResumesPage() {
               filteredResumes.map((resume) => (
                 <article
                   key={resume.id}
-                  className="flex flex-col rounded-xl border border-gray-200 p-5 transition hover:border-indigo-200 hover:shadow-md"
+                  className="resume-library-card app-data-card flex flex-col"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                      <FileText size={25} />
+                    <div className="flex min-w-0 items-center gap-3.5">
+                      <div className="resume-card-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-indigo-100 bg-indigo-50 text-indigo-600">
+                        <FileText size={23} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="truncate font-semibold text-slate-950">
+                          {resume.name}
+                        </h3>
+                        <p className="mt-0.5 truncate text-sm text-slate-500">
+                          {resume.targetRole}
+                        </p>
+                      </div>
                     </div>
 
                     {resume.isDefault && (
-                      <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                      <span className="flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
                         <Star size={13} />
                         Default
                       </span>
                     )}
                   </div>
 
-                  <h3 className="mt-4 font-semibold text-gray-900">
-                    {resume.name}
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {resume.targetRole}
-                  </p>
-
-                  <div className="mt-4 flex items-center gap-2 rounded-lg bg-gray-50 p-3">
-                    <FileText
-                      size={18}
-                      className="shrink-0 text-gray-400"
-                    />
-                    <span className="truncate text-xs text-gray-600">
+                  <div className="mt-5 flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+                    <FileText size={16} className="shrink-0 text-slate-400" />
+                    <span className="truncate text-xs font-medium text-slate-600">
                       {resume.fileName}{!resume.hasFile && " (file not uploaded)"}
                     </span>
                   </div>
@@ -333,7 +295,10 @@ export default function ResumesPage() {
                   {resume.hasFile && (
                     <div className="mt-3 text-sm" aria-live="polite">
                       {resume.extractionStatus === "ready" ? (
-                        <p className="text-green-700">Text extracted — ready for analysis.</p>
+                        <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                          Text extracted — ready for analysis
+                        </p>
                       ) : (
                         <>
                           <p className="text-amber-700">
@@ -341,7 +306,7 @@ export default function ResumesPage() {
                               ? "No readable text could be extracted. The file may be scanned, password-protected, damaged, or too complex. Upload a text-based PDF or DOCX through Edit."
                               : "This file has not been checked for readable text yet."}
                           </p>
-                          <button type="button" disabled={extractingId !== null} onClick={() => handleExtract(resume.id)} className="mt-2 font-medium text-blue-600 hover:underline disabled:opacity-50">
+                          <button type="button" disabled={extractingId !== null} onClick={() => handleExtract(resume.id)} className="app-button-text mt-2 disabled:opacity-50">
                             {extractingId === resume.id ? "Extracting..." : resume.extractionStatus === "unavailable" ? "Retry extraction" : "Extract text"}
                           </button>
                         </>
@@ -353,40 +318,23 @@ export default function ResumesPage() {
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
                       Skills
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {resume.skills.length > 0 ? (
-                        resume.skills.map((skill) => (
-                          <span
-                            key={skill}
-                            className="rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700"
-                          >
-                            {skill}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-gray-400">
-                          No skills added
-                        </span>
-                      )}
-                    </div>
+                    <ExpandableSkillList skills={resume.skills} />
                   </div>
 
                   {resume.notes && (
-                    <p className="mt-4 line-clamp-2 text-sm text-gray-500">
-                      {resume.notes}
-                    </p>
+                    <ExpandableText text={resume.notes} className="mt-4 text-sm leading-6 text-slate-500" />
                   )}
 
-                  <div className="mt-4 flex items-center gap-1.5 text-xs text-gray-400">
+                  <div className="resume-card-date flex items-center gap-1.5 text-xs text-gray-400">
                     <CalendarDays size={14} />
                     Updated {formatDate(resume.updatedAt)}
                   </div>
 
-                  <div className="mt-5 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
+                  <div className="resume-card-actions-simple app-card-actions">
                     <button
                       type="button"
                       onClick={() => openEditModal(resume)}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+                      className="app-button-secondary flex-1"
                     >
                       <Pencil size={15} />
                       Edit
@@ -398,7 +346,7 @@ export default function ResumesPage() {
                       disabled={!resume.hasFile}
                       title={resume.hasFile ? "Download resume" : "Edit this resume to upload its file"}
                       aria-label={`Download ${resume.name}`}
-                      className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50"
+                      className="app-icon-button"
                     >
                       <Download size={17} />
                     </button>
@@ -409,7 +357,7 @@ export default function ResumesPage() {
                       disabled={resume.isDefault}
                       title="Set as default resume"
                       aria-label={`Set ${resume.name} as default`}
-                      className="rounded-lg border border-gray-200 p-2 text-amber-600 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="app-icon-button !text-amber-600 hover:!bg-amber-50 disabled:opacity-40"
                     >
                       <Star size={17} />
                     </button>
@@ -419,7 +367,7 @@ export default function ResumesPage() {
                       onClick={() => setResumeToDelete(resume)}
                       title="Delete resume"
                       aria-label={`Delete ${resume.name}`}
-                      className="rounded-lg border border-gray-200 p-2 text-gray-500 transition hover:bg-red-50 hover:text-red-600"
+                      className="app-icon-button hover:!border-red-200 hover:!bg-red-50 hover:!text-red-600"
                     >
                       <Trash2 size={17} />
                     </button>
@@ -429,8 +377,13 @@ export default function ResumesPage() {
             )}
           </div>
 
-          <div className="border-t border-gray-100 px-5 py-4 text-sm text-gray-500">
-            Showing {filteredResumes.length} of {resumes.length} resumes
+          <div className="app-results-footer flex flex-wrap items-center justify-between gap-3">
+            <span>Showing {filteredResumes.length} of {resumes.length} resumes</span>
+            {(search || roleFilter !== "All") && (
+              <button type="button" onClick={() => { setSearch(""); setRoleFilter("All"); }} className="app-button-text">
+                Clear filters
+              </button>
+            )}
           </div>
         </section>
       </div>
@@ -438,12 +391,12 @@ export default function ResumesPage() {
       {showModal && (
         <div className="app-modal-backdrop app-modal-backdrop-scroll">
           <div role="dialog" aria-modal="true" aria-labelledby="resume-form-title" className="app-modal-panel my-auto max-w-2xl">
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+            <div className={`flex items-center justify-between border-b px-6 py-5 ${editingId !== null ? "border-amber-200 bg-amber-50/70" : "border-indigo-200 bg-indigo-50/70"}`}>
               <div>
-                <h2 id="resume-form-title" className="text-lg font-bold text-gray-900">
+                <h2 id="resume-form-title" className={`text-lg font-bold ${editingId !== null ? "text-amber-950" : "text-indigo-950"}`}>
                   {editingId !== null ? "Edit Resume" : "Add Resume"}
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-slate-600">
                   Add a resume version to your library.
                 </p>
               </div>
@@ -453,7 +406,7 @@ export default function ResumesPage() {
                 disabled={saving}
                 onClick={() => setShowModal(false)}
                 aria-label="Close form"
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="app-icon-button app-icon-button-ghost shrink-0"
               >
                 <X size={20} />
               </button>
@@ -645,7 +598,7 @@ export default function ResumesPage() {
                 </p>
               )}
 
-              <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end">
+              <div className="app-modal-footer">
                 <button
                   type="button"
                   disabled={saving}
@@ -672,11 +625,11 @@ export default function ResumesPage() {
         <div className="app-modal-backdrop !z-[80]">
           <div role="alertdialog" aria-modal="true" aria-labelledby="delete-resume-title" aria-describedby="delete-resume-description" className="app-modal-panel max-w-md p-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600"><Trash2 size={22} /></div>
-            <h2 id="delete-resume-title" className="mt-4 text-lg font-bold text-gray-900">Delete resume?</h2>
+            <h2 id="delete-resume-title" className="mx-auto mt-4 w-fit rounded-lg bg-red-50 px-3 py-2 text-lg font-bold text-red-800">Delete resume?</h2>
             <p id="delete-resume-description" className="mt-2 text-sm text-gray-500">Delete &quot;{resumeToDelete.name}&quot; from your resume library?</p>
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
               <button type="button" onClick={() => setResumeToDelete(null)} className="app-button-secondary">Cancel</button>
-              <button type="button" onClick={confirmDeleteResume} className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">Delete resume</button>
+              <button type="button" onClick={confirmDeleteResume} className="app-button-danger">Delete resume</button>
             </div>
           </div>
         </div>

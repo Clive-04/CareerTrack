@@ -11,6 +11,7 @@ from app.core.gemini import analyze
 from app.core.config import settings
 from app.core.job_description import validate_job_description
 from app.core.analysis_freshness import source_fingerprints
+from app.core.analysis_context import selected_skills_context, source_profile
 from app.models.analysis import ResumeAnalysis
 from app.db.session import get_db
 from app.models.job import Job
@@ -55,6 +56,7 @@ def preview(job_id: UUID, data: PreviewRequest, response: Response,
     job, resume = documents(job_id, data.resume_id, user, db)
     response.headers["Cache-Control"] = "no-store"
     return {"resume_text": redact_contacts(resume.parsed_text, user),
+            "skills_context": redact_contacts(selected_skills_context(resume, user.id, db), user),
             "job_description": redact_contacts(job.description, user)}
 
 
@@ -85,10 +87,12 @@ def analyze_resume(job_id: UUID, data: AnalysisRequest, response: Response,
     row = ResumeAnalysis(user_id=user.id, job_id=job.id, resume_id=resume.id,
                          resume_name=resume.name, job_title=job.position, company=job.company,
                          model=settings.GEMINI_MODEL)
-    result = AnalysisResult.model_validate(analyze(data.resume_text.strip(), data.job_description.strip()))
+    result = AnalysisResult.model_validate(analyze(
+        data.resume_text.strip(), data.job_description.strip(), data.skills_context.strip()
+    ))
     row.result = {
         **result.model_dump(),
-        **source_fingerprints(job.description, resume.parsed_text),
+        **source_fingerprints(job.description, source_profile(resume, user.id, db)),
     }
     db.add(row)
     try:

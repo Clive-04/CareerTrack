@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { LogOut, X } from "lucide-react";
+import useDialogControls from "@/hooks/useDialogControls";
 import {
   getCurrentUser,
   login as loginRequest,
@@ -46,6 +47,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       Boolean(window.localStorage.getItem(authTokenKey)),
   );
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
+
+  useDialogControls(showLogoutConfirmation, () => setShowLogoutConfirmation(false));
 
   useEffect(() => {
     const storedToken = token;
@@ -102,12 +105,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       {children}
 
       {showLogoutConfirmation && user && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+        <div className="app-modal-backdrop !z-[100]">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="logout-dialog-title"
-            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
+            className="app-modal-panel max-w-sm p-6"
           >
             <div className="relative flex items-start justify-center gap-4">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
@@ -118,7 +121,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
                 type="button"
                 aria-label="Close logout confirmation"
                 onClick={() => setShowLogoutConfirmation(false)}
-                className="absolute right-0 top-0 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                className="app-icon-button app-icon-button-ghost app-icon-button-compact absolute right-0 top-0"
               >
                 <X size={19} />
               </button>
@@ -126,7 +129,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
             <h2
               id="logout-dialog-title"
-              className="mt-5 text-center text-lg font-bold text-slate-900"
+              className="mx-auto mt-5 w-fit rounded-lg bg-red-50 px-3 py-2 text-center text-lg font-bold text-red-800"
             >
               Log out of CareerTrack?
             </h2>
@@ -138,14 +141,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={() => setShowLogoutConfirmation(false)}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                className="app-button-secondary"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmLogout}
-                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+                className="app-button-danger"
               >
                 Log out
               </button>

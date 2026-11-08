@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
+import MetricCard from "@/components/MetricCard";
 import {
   BriefcaseBusiness,
   FileText,
@@ -94,6 +95,7 @@ export default function DashboardPage() {
               description="Here's an overview of your job search progress."
               action={
                 <button
+                  type="button"
                   onClick={() => router.push("/jobs")}
                   className="app-button-primary self-start sm:self-auto"
                 >
@@ -104,35 +106,31 @@ export default function DashboardPage() {
             />
 
             <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <SummaryCard
-                title="Total Applications"
+              <MetricCard
+                label="Total Applications"
                 value={String(applications.length)}
-                note="Applications tracked"
                 icon={FileText}
-                iconStyle="bg-blue-50 text-blue-600"
+                tone="blue"
               />
-              <SummaryCard
-                title="Interviews"
+              <MetricCard
+                label="Interviews"
                 value={String(interviews.length)}
-                note="Keep preparing"
                 icon={CalendarDays}
-                iconStyle="bg-purple-50 text-purple-600"
+                tone="violet"
               />
-              <SummaryCard
-                title="Jobs Saved"
+              <MetricCard
+                label="Jobs Saved"
                 value={String(jobs.length)}
-                note="Opportunities collected"
                 icon={BriefcaseBusiness}
-                iconStyle="bg-amber-50 text-amber-600"
+                tone="amber"
               />
-              <SummaryCard
-                title="Offers Received"
+              <MetricCard
+                label="Offers Received"
                 value={String(
                   applications.filter((application) => application.status === "Offer").length,
                 )}
-                note="A step toward your goal"
                 icon={CircleCheck}
-                iconStyle="bg-green-50 text-green-600"
+                tone="emerald"
               />
             </section>
 
@@ -213,7 +211,7 @@ export default function DashboardPage() {
                       Keep track of your latest opportunities.
                     </p>
                   </div>
-                  <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
+                  <label className="app-search-control flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
                     <Search size={17} className="text-slate-400" />
                     <input
                       value={search}
@@ -224,7 +222,33 @@ export default function DashboardPage() {
                   </label>
                 </div>
 
-                <div className="mt-6 overflow-x-auto">
+                <div className="mt-5 space-y-3 sm:hidden">
+                  {displayedApplications.map((application) => (
+                    <article key={application.id} className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${application.color}`}>
+                          {application.initials}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-slate-800">{application.company}</p>
+                          <p className="mt-1 text-xs text-slate-500">{application.position}</p>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusStyles[application.status]}`}>
+                          {application.status}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                        <span className="flex items-center gap-1"><MapPin size={12} />{application.location}</span>
+                        <span>{application.date}</span>
+                      </div>
+                    </article>
+                  ))}
+                  {displayedApplications.length === 0 && (
+                    <div className="app-empty-state !py-8 text-sm text-slate-500">No applications match your search.</div>
+                  )}
+                </div>
+
+                <div className="mt-6 hidden overflow-x-auto sm:block">
                   <table className="w-full min-w-[600px] text-left">
                     <thead>
                       <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
@@ -368,8 +392,9 @@ export default function DashboardPage() {
                     Keep your resume updated and highlight the skills that match your target roles.
                   </p>
                   <button
+                    type="button"
                     onClick={() => router.push("/resumes")}
-                    className="mt-5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#172B4D] transition hover:bg-blue-50"
+                    className="app-button-inverse mt-5"
                   >
                     Review my resumes
                   </button>
@@ -384,7 +409,6 @@ export default function DashboardPage() {
     </WorkspaceLayout>
   );
 }
-
 function formatDashboardDate(date: string) {
   return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
     month: "short",
@@ -422,36 +446,5 @@ function DashboardAction({
         <ArrowRight size={14} aria-hidden="true" />
       </span>
     </button>
-  );
-}
-
-function SummaryCard({
-  title,
-  value,
-  note,
-  icon: Icon,
-  iconStyle,
-}: {
-  title: string;
-  value: string;
-  note: string;
-  icon: typeof FileText;
-  iconStyle: string;
-}) {
-  return (
-    <div className="app-surface app-surface-interactive p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
-            {value}
-          </p>
-        </div>
-        <div className={`rounded-xl p-3 ${iconStyle}`}>
-          <Icon size={21} />
-        </div>
-      </div>
-      <p className="mt-4 text-xs text-slate-500">{note}</p>
-    </div>
   );
 }

@@ -37,12 +37,15 @@ export default function WorkspaceLayout({
 
   return (
     <div className="app-shell min-h-screen text-slate-800">
+      <a href="#workspace-content" className="app-skip-link">
+        Skip to main content
+      </a>
       <Sidebar
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
       />
 
-      <main className="min-h-screen lg:ml-72">
+      <main id="workspace-content" tabIndex={-1} className="min-h-screen outline-none lg:ml-72">
         <TopNavbar
           mobileMenuOpen={mobileMenuOpen}
           setMobileMenuOpen={setMobileMenuOpen}

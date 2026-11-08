@@ -15,6 +15,7 @@ class AnalysisRequest(PreviewRequest):
     _validate_job = field_validator("job_description")(validate_job_description)
     consent: StrictBool
     resume_text: str = Field(min_length=50, max_length=40000)
+    skills_context: str = Field(default="", max_length=10000)
     job_description: str = Field(min_length=50, max_length=20000)
 
 

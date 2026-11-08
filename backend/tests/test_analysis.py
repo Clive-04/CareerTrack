@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 import app.models
 from app.db.base import Base
-from app.models import User, Job, Resume, ResumeAnalysis
+from app.models import User, Job, Resume, ResumeAnalysis, Skill
 from app.core import gemini
 from app.routers import analysis
 from app.routers import applications, jobs
@@ -40,7 +40,11 @@ class GeminiTest(unittest.TestCase):
         request = send.call_args.args[0]
         self.assertNotIn("test-key", request.full_url)
         payload = json.loads(request.data)
-        self.assertEqual(json.loads(payload["contents"][0]["parts"][0]["text"]), {"resume": RESUME, "job_description": JOB})
+        self.assertEqual(json.loads(payload["contents"][0]["parts"][0]["text"]), {
+            "resume": RESUME,
+            "selected_skills_context": "",
+            "job_description": JOB,
+        })
         self.assertEqual(payload["generationConfig"]["thinkingConfig"], {"thinkingLevel": "low"})
         self.assertNotIn("tools", payload)
         self.assertEqual(send.call_args.kwargs["timeout"], gemini.settings.GEMINI_TIMEOUT_SECONDS)
@@ -109,10 +113,16 @@ class AnalysisRouteTest(unittest.TestCase):
         self.db.add_all([self.owner, self.other])
         self.db.flush()
         self.job = Job(user_id=self.owner.id, company="Company", position="Developer", description=JOB)
-        self.resume = Resume(user_id=self.owner.id, name="Sample", file_name="sample.pdf", file_path="", parsed_text=RESUME)
-        self.db.add_all([self.job, self.resume])
+        self.resume = Resume(user_id=self.owner.id, name="Sample", file_name="sample.pdf", file_path="",
+                             parsed_text=RESUME, skills_json=json.dumps(["Python"]))
+        self.skill = Skill(user_id=self.owner.id, name="Python", category="Programming",
+                           proficiency="Advanced", years_experience=3,
+                           notes="Built data processing tools not listed in the resume.")
+        self.db.add_all([self.job, self.resume, self.skill])
         self.db.commit()
-        self.request = AnalysisRequest(resume_id=self.resume.id, consent=True, resume_text=RESUME, job_description=JOB)
+        self.skills_context = analysis.selected_skills_context(self.resume, self.owner.id, self.db)
+        self.request = AnalysisRequest(resume_id=self.resume.id, consent=True, resume_text=RESUME,
+                                       skills_context=self.skills_context, job_description=JOB)
         analysis._last_requests.clear()
 
     def tearDown(self):
@@ -127,6 +137,8 @@ class AnalysisRouteTest(unittest.TestCase):
             send.assert_not_called()
         self.assertNotIn("owner@example.test", result["resume_text"])
         self.assertNotIn("Sample Owner", result["resume_text"])
+        self.assertIn("Python", result["skills_context"])
+        self.assertIn("Built data processing tools", result["skills_context"])
 
     def test_no_consent_or_foreign_records_never_send(self):
         with patch.object(analysis, "analyze") as send:
@@ -155,7 +167,7 @@ class AnalysisRouteTest(unittest.TestCase):
         with patch.object(analysis, "analyze", return_value=RESULT) as send:
             response = Response()
             analysis.analyze_resume(self.job.id, request, response, self.owner, self.db)
-            send.assert_called_once_with(request.resume_text, JOB)
+            send.assert_called_once_with(request.resume_text, JOB, request.skills_context)
             self.assertEqual(response.headers["Cache-Control"], "no-store")
             with self.assertRaises(HTTPException) as error:
                 analysis.analyze_resume(self.job.id, request, Response(), self.owner, self.db)
@@ -236,12 +248,22 @@ class AnalysisRouteTest(unittest.TestCase):
         self.db.commit()
         result = jobs.get_jobs(None, None, None, self.owner, self.db)[0]
         self.assertTrue(result.latest_analysis_is_stale)
-        self.assertTrue(any("resume content changed" in reason.lower() for reason in result.latest_analysis_stale_reasons))
+        self.assertTrue(any("resume" in reason.lower() for reason in result.latest_analysis_stale_reasons))
 
         self.db.delete(self.resume)
         self.db.commit()
         result = jobs.get_jobs(None, None, None, self.owner, self.db)[0]
         self.assertTrue(any("resume was deleted" in reason.lower() for reason in result.latest_analysis_stale_reasons))
+
+    def test_selected_skill_change_marks_analysis_stale(self):
+        self.saved()
+        self.skill.notes = "Added recent accessibility project details."
+        self.db.commit()
+
+        result = jobs.get_jobs(None, None, None, self.owner, self.db)[0]
+
+        self.assertTrue(result.latest_analysis_is_stale)
+        self.assertTrue(any("selected skills changed" in reason.lower() for reason in result.latest_analysis_stale_reasons))
 
     def test_reanalysis_restores_fresh_status(self):
         previous = self.saved()

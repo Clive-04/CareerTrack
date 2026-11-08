@@ -7,6 +7,8 @@ const user = {
   last_name: "Tester",
 };
 
+const jobDescription = "Build accessible web interfaces for customers using React and TypeScript. Collaborate with designers and backend engineers to deliver reliable features, review code, document decisions, and improve automated tests. The role requires clear communication, responsive design experience, version control knowledge, API integration skills, practical debugging, and careful attention to usability, performance, security, and maintainable frontend architecture.";
+
 async function mockCareerTrackApi(page: Page) {
   const handleApiRoute = async (route: Route) => {
     const request = route.request();
@@ -52,7 +54,7 @@ async function mockCareerTrackApi(page: Page) {
           location: "Remote",
           employment_type: "Full-time",
           job_url: null,
-          description: "Build accessible web interfaces for customers.",
+          description: jobDescription,
           salary_min: 50_000,
           salary_max: 70_000,
           created_at: "2026-11-01T08:00:00Z",
@@ -93,6 +95,20 @@ async function mockCareerTrackApi(page: Page) {
           date_applied: "2026-11-03",
           notes: "Submitted online",
         }]);
+      return;
+    }
+
+    if (method === "GET" && path === "/jobs/job-1/analyses") {
+      await fulfillJson([]);
+      return;
+    }
+
+    if (method === "POST" && path === "/jobs/job-1/analysis-preview") {
+      await fulfillJson({
+        resume_text: "Frontend developer with React and TypeScript experience building accessible interfaces and integrating reliable APIs for customer-facing products.",
+        skills_context: "- React (category: Frameworks; proficiency: Advanced; experience: 3 years; notes: Built reusable accessible components.)",
+        job_description: jobDescription,
+      });
       return;
     }
 
@@ -208,7 +224,17 @@ test("navigates every workspace page", async ({ page }) => {
     await followWorkspaceLink(page, link);
     await expect(page).toHaveURL(new RegExp(`${path}$`));
     await expect(page.getByRole("heading", { name: heading, exact: true }).first()).toBeVisible();
+    await expect.poll(() => page.evaluate(() =>
+      document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+    )).toBe(true);
   }
+
+  await page.goto("/applications?job=job-1&resume=resume-1");
+  const applicationDialog = page.getByRole("dialog", { name: "Add Application" });
+  await expect(applicationDialog).toBeVisible();
+  await expect(applicationDialog.getByLabel("Saved Job *")).toHaveValue("job-1");
+  await expect(applicationDialog.getByLabel("Resume used (optional)")).toHaveValue("resume-1");
+  await expect(page).toHaveURL(/\/applications$/);
 });
 
 test("signs in, loads dashboard data, and confirms logout", async ({ page }) => {
@@ -245,6 +271,18 @@ test("signs in, loads dashboard data, and confirms logout", async ({ page }) => 
   expect(Math.round(backdropBox?.height ?? -1)).toBe(viewport?.height);
   await page.keyboard.press("Escape");
   await expect(jobDialog).toBeHidden();
+
+  await page.getByRole("button", { name: "Analyze Resume with AI" }).click();
+  const analysisDialog = page.getByRole("dialog", { name: "AI Resume Analysis" });
+  await expect(analysisDialog).toBeVisible();
+  await analysisDialog.getByRole("button", { name: "Review text before sending" }).click();
+  await expect(analysisDialog.getByRole("tab", { name: "Resume" })).toHaveAttribute("aria-selected", "true");
+  await analysisDialog.getByRole("tab", { name: "Skills" }).click();
+  await expect(analysisDialog.getByLabel("Selected skills context")).toHaveValue(/React/);
+  await analysisDialog.getByRole("tab", { name: "Job" }).click();
+  await expect(analysisDialog.getByLabel("Job requirements")).toHaveValue(/accessible web interfaces/);
+  await analysisDialog.getByRole("button", { name: "Close analysis" }).click();
+  await expect(analysisDialog).toBeHidden();
 
   await followWorkspaceLink(page, "Interviews");
   await expect(page.getByRole("heading", { name: "Applications ready to schedule" })).toBeVisible();

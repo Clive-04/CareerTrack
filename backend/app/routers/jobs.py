@@ -6,6 +6,7 @@ from app.core.dependencies import get_current_user
 from app.db.session import get_db
 from app.models import Job, Resume, ResumeAnalysis, User
 from app.core.analysis_freshness import stale_reasons
+from app.core.analysis_context import source_profile
 from app.schemas.job import JobCreate, JobResponse, JobUpdate
 from app.core.job_description import validate_job_description
 
@@ -41,9 +42,11 @@ def resumes_for_analyses(db: Session, analyses: dict) -> dict:
     return {resume.id: resume for resume in db.scalars(select(Resume).where(Resume.id.in_(resume_ids))).all()}
 
 
-def job_response(job: Job, analysis: ResumeAnalysis | None = None, resume: Resume | None = None) -> JobResponse:
+def job_response(job: Job, analysis: ResumeAnalysis | None = None, resume: Resume | None = None,
+                 db: Session | None = None) -> JobResponse:
     score = analysis.result.get("score") if analysis else None
-    reasons = stale_reasons(job, analysis, resume)
+    current_source = source_profile(resume, job.user_id, db) if resume is not None and db is not None else None
+    reasons = stale_reasons(job, analysis, resume, current_source)
     return JobResponse(
         id=str(job.id),
         company=job.company,
@@ -131,7 +134,7 @@ def get_jobs(
 
     analyses = latest_analyses(db, current_user.id, (job.id for job in jobs))
     resumes = resumes_for_analyses(db, analyses)
-    return [job_response(job, analyses.get(job.id), resumes.get(analyses[job.id].resume_id) if job.id in analyses else None) for job in jobs]
+    return [job_response(job, analyses.get(job.id), resumes.get(analyses[job.id].resume_id) if job.id in analyses else None, db) for job in jobs]
 
 @router.get(
     "/{job_id}",
@@ -157,7 +160,7 @@ def get_job(
 
     analysis = latest_analyses(db, current_user.id, [job.id]).get(job.id)
     resumes = resumes_for_analyses(db, {job.id: analysis} if analysis else {})
-    return job_response(job, analysis, resumes.get(analysis.resume_id) if analysis else None)
+    return job_response(job, analysis, resumes.get(analysis.resume_id) if analysis else None, db)
 
 @router.patch(
     "/{job_id}",
@@ -196,7 +199,7 @@ def update_job(
 
     analysis = latest_analyses(db, current_user.id, [job.id]).get(job.id)
     resumes = resumes_for_analyses(db, {job.id: analysis} if analysis else {})
-    return job_response(job, analysis, resumes.get(analysis.resume_id) if analysis else None)
+    return job_response(job, analysis, resumes.get(analysis.resume_id) if analysis else None, db)
 
 @router.delete(
     "/{job_id}",

@@ -25,7 +25,7 @@ def _changed_after_analysis(updated_at, created_at) -> bool:
         return updated_at.replace(tzinfo=None) > created_at.replace(tzinfo=None)
 
 
-def stale_reasons(job, analysis, resume) -> list[str]:
+def stale_reasons(job, analysis, resume, current_resume_source: str | None = None) -> list[str]:
     if analysis is None:
         return []
 
@@ -43,8 +43,9 @@ def stale_reasons(job, analysis, resume) -> list[str]:
     else:
         stored_resume = result.get(RESUME_FINGERPRINT)
         if stored_resume:
-            if stored_resume != text_fingerprint(resume.parsed_text):
-                reasons.append("The analyzed resume content changed after this analysis.")
+            source = current_resume_source if current_resume_source is not None else resume.parsed_text
+            if stored_resume != text_fingerprint(source):
+                reasons.append("The analyzed resume or its selected skills changed after this analysis.")
         elif _changed_after_analysis(resume.updated_at, analysis.created_at):
             reasons.append("The analyzed resume changed after this analysis.")
 

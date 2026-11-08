@@ -352,7 +352,7 @@ function VisibilityButton({ shown, label, onClick }: { shown: boolean; label: st
       type="button"
       aria-label={`${shown ? "Hide" : "Show"} ${label}`}
       onClick={onClick}
-      className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600"
+      className="app-icon-button app-icon-button-ghost app-icon-button-compact absolute right-1.5 top-1/2 -translate-y-1/2 hover:!text-indigo-600"
     >
       {shown ? <EyeOff size={17} /> : <Eye size={17} />}
     </button>

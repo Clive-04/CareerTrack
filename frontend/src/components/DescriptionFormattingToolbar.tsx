@@ -88,7 +88,7 @@ export default function DescriptionFormattingToolbar({
             aria-label={`Format as ${format.label.toLowerCase()}`}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => applyInlineFormat(format)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white hover:text-indigo-600 hover:shadow-sm"
+            className="app-icon-button app-icon-button-ghost app-icon-button-compact hover:!bg-white hover:!text-indigo-600 hover:shadow-sm"
           >
             <Icon size={16} />
           </button>
@@ -103,7 +103,7 @@ export default function DescriptionFormattingToolbar({
         aria-label="Format as heading"
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => applyLineFormat("## ", "Section heading")}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white hover:text-indigo-600 hover:shadow-sm"
+        className="app-icon-button app-icon-button-ghost app-icon-button-compact hover:!bg-white hover:!text-indigo-600 hover:shadow-sm"
       >
         <Heading2 size={17} />
       </button>
@@ -113,7 +113,7 @@ export default function DescriptionFormattingToolbar({
         aria-label="Format as bulleted list"
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => applyLineFormat("- ", "List item")}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white hover:text-indigo-600 hover:shadow-sm"
+        className="app-icon-button app-icon-button-ghost app-icon-button-compact hover:!bg-white hover:!text-indigo-600 hover:shadow-sm"
       >
         <List size={17} />
       </button>

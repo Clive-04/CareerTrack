@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
 import {
@@ -22,6 +22,8 @@ import {
 import { useJobs } from "@/components/JobsProvider";
 import { useResumes } from "@/components/ResumesProvider";
 import OutdatedAnalysisWarning from "@/components/OutdatedAnalysisWarning";
+import ExpandableText from "@/components/ExpandableText";
+import MetricCard from "@/components/MetricCard";
 import useDialogControls from "@/hooks/useDialogControls";
 
 type ApplicationForm = {
@@ -89,29 +91,29 @@ export default function ApplicationsPage() {
   useDialogControls(showForm, closeForm);
   useDialogControls(applicationToDelete !== null, () => setApplicationToDelete(null));
 
-  useEffect(() => {
+  /* The URL-driven modal must be ready before the destination page is painted. */
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useLayoutEffect(() => {
     if (prefillHandled.current || jobsLoading || resumesLoading) return;
-    prefillHandled.current = true;
+
     const params = new URLSearchParams(window.location.search);
     const jobId = params.get("job") ?? "";
     const resumeId = params.get("resume") ?? "";
     if (!jobs.some((job) => job.id === jobId)) return;
-    let active = true;
-    queueMicrotask(() => {
-      if (!active) return;
-      setEditingId(null);
-      setForm({
-        ...emptyForm,
-        jobId,
-        resumeId: resumes.some((resume) => resume.id === resumeId) ? resumeId : "",
-        dateApplied: getLocalDate(),
-      });
-      setError("");
-      setShowForm(true);
-      window.history.replaceState(null, "", "/applications");
+
+    prefillHandled.current = true;
+    setEditingId(null);
+    setForm({
+      ...emptyForm,
+      jobId,
+      resumeId: resumes.some((resume) => resume.id === resumeId) ? resumeId : "",
+      dateApplied: getLocalDate(),
     });
-    return () => { active = false; };
+    setError("");
+    setShowForm(true);
+    window.history.replaceState(null, "", "/applications");
   }, [jobs, jobsLoading, resumes, resumesLoading]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const filteredApplications = applications.filter((application) => {
     const matchesSearch =
@@ -257,28 +259,32 @@ export default function ApplicationsPage() {
         />
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard
-            title="Total Applications"
+          <MetricCard
+            label="Total Applications"
             value={applications.length}
-            icon={<FileText size={21} />}
+            icon={FileText}
+            tone="indigo"
           />
 
-          <SummaryCard
-            title="Active Applications"
+          <MetricCard
+            label="Active Applications"
             value={activeCount}
-            icon={<Building2 size={21} />}
+            icon={Building2}
+            tone="blue"
           />
 
-          <SummaryCard
-            title="Interviews"
+          <MetricCard
+            label="Interviews"
             value={interviewCount}
-            icon={<CalendarDays size={21} />}
+            icon={CalendarDays}
+            tone="violet"
           />
 
-          <SummaryCard
-            title="Offers Received"
+          <MetricCard
+            label="Offers Received"
             value={offerCount}
-            icon={<FileText size={21} />}
+            icon={FileText}
+            tone="emerald"
           />
         </section>
 
@@ -287,7 +293,7 @@ export default function ApplicationsPage() {
         )}
 
         {applicationsError && (
-          <p role="alert" className="text-sm font-medium text-red-600">
+          <p role="alert" className="app-notice-error">
             {applicationsError}
           </p>
         )}
@@ -320,13 +326,21 @@ export default function ApplicationsPage() {
             </select>
           </div>
 
-          <p className="mt-4 text-sm text-slate-500">
-            Showing{" "}
-            <span className="font-semibold text-slate-700">
-              {filteredApplications.length}
-            </span>{" "}
-            of {applications.length} applications
-          </p>
+          <div className="app-filter-summary">
+            <p>
+              Showing <span className="font-semibold text-slate-700">{filteredApplications.length}</span>{" "}
+              of {applications.length} applications
+            </p>
+            {(search || statusFilter !== "All statuses") && (
+              <button
+                type="button"
+                onClick={() => { setSearch(""); setStatusFilter("All statuses"); }}
+                className="app-button-text"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </section>
 
         <section className="app-surface overflow-hidden">
@@ -339,7 +353,63 @@ export default function ApplicationsPage() {
             </p>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="space-y-3 p-4 md:hidden">
+            {filteredApplications.map((application) => (
+              <article key={application.id} className="app-data-card">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                    <Building2 size={20} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate font-semibold text-slate-900">{application.company}</h3>
+                    <p className="mt-1 text-sm text-slate-600">{application.position}</p>
+                    <p className="mt-2 flex items-center gap-1 text-xs text-slate-400">
+                      <MapPin size={13} /> {application.location}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[application.status]}`}>
+                    {application.status}
+                  </span>
+                </div>
+
+                <dl className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-xs">
+                  <div>
+                    <dt className="text-slate-400">Date applied</dt>
+                    <dd className="mt-1 font-semibold text-slate-700">
+                      {new Date(`${application.dateApplied}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-400">Resume</dt>
+                    <dd className="mt-1 truncate font-semibold text-slate-700">{application.resumeName}</dd>
+                  </div>
+                </dl>
+
+                {application.notes && (
+                  <ExpandableText text={application.notes} className="mt-3 text-sm leading-6 text-slate-500" />
+                )}
+
+                <div className="app-card-actions">
+                  <button type="button" onClick={() => openEditApplication(application)} className="app-button-secondary flex-1">
+                    <Pencil size={15} /> Edit
+                  </button>
+                  <button type="button" onClick={() => handleDeleteApplication(application.id)} className="app-button-danger-outline flex-1">
+                    <Trash2 size={15} /> Delete
+                  </button>
+                </div>
+              </article>
+            ))}
+
+            {filteredApplications.length === 0 && (
+              <div className="app-empty-state">
+                <FileText size={32} className="mx-auto text-slate-300" />
+                <h3 className="mt-4 font-semibold text-slate-800">No applications found</h3>
+                <p className="mt-2 text-sm text-slate-500">Adjust your search or filters to see other applications.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[900px] text-left">
               <thead className="bg-slate-50">
                 <tr className="text-xs uppercase tracking-wider text-slate-500">
@@ -386,9 +456,7 @@ export default function ApplicationsPage() {
                           </p>
 
                           {application.notes && (
-                            <p className="mt-2 max-w-xs text-xs leading-5 text-slate-500">
-                              {application.notes}
-                            </p>
+                            <ExpandableText text={application.notes} className="mt-2 max-w-xs text-xs leading-5 text-slate-500" />
                           )}
                         </div>
                       </div>
@@ -418,7 +486,7 @@ export default function ApplicationsPage() {
                           type="button"
                           onClick={() => openEditApplication(application)}
                           aria-label={`Edit application for ${application.position} at ${application.company}`}
-                          className="inline-flex w-24 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                          className="app-button-secondary app-button-compact w-24"
                         >
                           <Pencil size={15} />
                           Edit
@@ -430,7 +498,7 @@ export default function ApplicationsPage() {
                             handleDeleteApplication(application.id)
                           }
                           aria-label={`Delete application for ${application.position} at ${application.company}`}
-                          className="inline-flex w-24 items-center justify-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                          className="app-button-danger-outline app-button-compact w-24"
                         >
                           <Trash2 size={15} />
                           Delete
@@ -462,13 +530,13 @@ export default function ApplicationsPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="application-form-title"
-            className="app-modal-panel my-auto max-w-xl p-6 sm:p-8"
+            className="app-modal-panel my-auto max-w-xl"
           >
-            <div className="flex items-start justify-between gap-4">
+            <div className={`flex items-start justify-between gap-4 border-b px-6 py-5 ${editingId !== null ? "border-amber-200 bg-amber-50/70" : "border-indigo-200 bg-indigo-50/70"}`}>
               <div>
                 <h2
                   id="application-form-title"
-                  className="text-xl font-bold text-slate-900"
+                  className={`text-xl font-bold ${editingId !== null ? "text-amber-950" : "text-indigo-950"}`}
                 >
                   {editingId !== null
                     ? "Edit Application"
@@ -485,7 +553,7 @@ export default function ApplicationsPage() {
                 type="button"
                 aria-label="Close form"
                 onClick={closeForm}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                className="app-icon-button app-icon-button-ghost shrink-0"
               >
                 <X size={20} />
               </button>
@@ -494,7 +562,7 @@ export default function ApplicationsPage() {
             <form
               noValidate
               onSubmit={handleSaveApplication}
-              className="mt-6 space-y-4"
+              className="space-y-4 p-6"
             >
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField label="Saved Job *">
@@ -626,9 +694,10 @@ export default function ApplicationsPage() {
       {applicationToDelete && (
         <div className="app-modal-backdrop !z-[80]">
           <div
-            role="dialog"
+            role="alertdialog"
             aria-modal="true"
             aria-labelledby="delete-application-dialog-title"
+            aria-describedby="delete-application-dialog-description"
             className="app-modal-panel max-w-sm p-6 text-center"
           >
             <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
@@ -637,11 +706,11 @@ export default function ApplicationsPage() {
 
             <h2
               id="delete-application-dialog-title"
-              className="mt-5 text-lg font-bold text-slate-900"
+              className="mx-auto mt-5 w-fit rounded-lg bg-red-50 px-3 py-2 text-lg font-bold text-red-800"
             >
               Delete this application?
             </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
+            <p id="delete-application-dialog-description" className="mt-2 text-sm leading-6 text-slate-500">
               Are you sure you want to delete your application for{" "}
               {applicationToDelete.position} at {applicationToDelete.company}?
             </p>
@@ -650,14 +719,14 @@ export default function ApplicationsPage() {
               <button
                 type="button"
                 onClick={() => setApplicationToDelete(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                className="app-button-secondary"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmDeleteApplication}
-                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+                className="app-button-danger"
               >
                 Delete application
               </button>
@@ -683,27 +752,6 @@ export default function ApplicationsPage() {
         }
       `}</style>
     </WorkspaceLayout>
-  );
-}
-
-function SummaryCard({
-  title,
-  value,
-  icon,
-}: {
-  title: string;
-  value: number;
-  icon: ReactNode;
-}) {
-  return (
-    <div className="app-surface flex items-center justify-between p-5">
-      <div>
-        <p className="text-sm font-medium text-slate-500">{title}</p>
-        <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
-      </div>
-
-      <div className="rounded-xl bg-blue-50 p-3 text-blue-600">{icon}</div>
-    </div>
   );
 }
 

@@ -9,6 +9,7 @@ import { useJobs, type Job } from "@/components/JobsProvider";
 import ResumeAnalysisDialog from "@/components/ResumeAnalysisDialog";
 import { countWords, MIN_JOB_WORDS, MAX_JOB_CHARACTERS } from "@/lib/jobDescription";
 import useDialogControls from "@/hooks/useDialogControls";
+import MetricCard from "@/components/MetricCard";
 import {
   Search,
   Plus,
@@ -275,28 +276,31 @@ export default function JobsPage() {
         />
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Summary
+          <MetricCard
             label="Saved Jobs"
             value={jobs.length}
-            icon={<BriefcaseBusiness size={20} />}
+            icon={BriefcaseBusiness}
+            tone="indigo"
           />
 
-          <Summary
+          <MetricCard
             label="Full-time Roles"
             value={
               jobs.filter((job) => job.employmentType === "Full-time").length
             }
-            icon={<Building2 size={20} />}
+            icon={Building2}
+            tone="blue"
           />
 
-          <Summary
+          <MetricCard
             label="Remote Opportunities"
             value={
               jobs.filter((job) =>
                 job.location.toLowerCase().includes("remote"),
               ).length
             }
-            icon={<MapPin size={20} />}
+            icon={MapPin}
+            tone="emerald"
           />
         </section>
 
@@ -305,7 +309,7 @@ export default function JobsPage() {
         )}
 
         {jobsError && (
-          <p role="alert" className="text-sm font-medium text-red-600">
+          <p role="alert" className="app-notice-error">
             {jobsError}
           </p>
         )}
@@ -357,13 +361,21 @@ export default function JobsPage() {
             </select>
           </div>
 
-          <p className="mt-4 text-sm text-slate-500">
-            Showing{" "}
-            <span className="font-semibold text-slate-700">
-              {filteredJobs.length}
-            </span>{" "}
-            of {jobs.length} saved jobs
-          </p>
+          <div className="app-filter-summary">
+            <p>
+              Showing <span className="font-semibold text-slate-700">{filteredJobs.length}</span>{" "}
+              of {jobs.length} saved jobs
+            </p>
+            {(search || typeFilter !== "All types" || locationFilter !== "All locations") && (
+              <button
+                type="button"
+                onClick={() => { setSearch(""); setTypeFilter("All types"); setLocationFilter("All locations"); }}
+                className="app-button-text"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </section>
 
         <section className="space-y-4">
@@ -432,16 +444,16 @@ export default function JobsPage() {
                 </div>
               )}
 
-              <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
-                <button type="button" onClick={() => { setAnalysisView("new"); setAnalysisJob(job); }} className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">
+              <div className="app-card-actions">
+                <button type="button" onClick={() => { setAnalysisView("new"); setAnalysisJob(job); }} className="app-button-ai">
                   <Sparkles size={16} aria-hidden="true" />{job.latestAnalysisIsStale ? "Analyze Again" : "Analyze Resume with AI"}
                 </button>
-                <button type="button" onClick={() => { setAnalysisView("history"); setAnalysisJob(job); }} className="rounded-lg border border-violet-200 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50">Analysis History</button>
+                <button type="button" onClick={() => { setAnalysisView("history"); setAnalysisJob(job); }} className="app-button-secondary !border-violet-200 !text-violet-700 hover:!bg-violet-50">Analysis History</button>
                 <button
                   type="button"
                   onClick={() => openEditJob(job)}
                   aria-label={`Edit ${job.position} at ${job.company}`}
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                  className="app-button-secondary"
                 >
                   <Pencil size={16} />
                   Edit
@@ -451,7 +463,7 @@ export default function JobsPage() {
                   type="button"
                   onClick={() => handleDeleteJob(job.id)}
                   aria-label={`Delete ${job.position} at ${job.company}`}
-                  className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                  className="app-button-danger-outline"
                 >
                   <Trash2 size={16} />
                   Delete
@@ -482,7 +494,7 @@ export default function JobsPage() {
                   setTypeFilter("All types");
                   setLocationFilter("All locations");
                 }}
-                className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                className="app-button-text mt-4"
               >
                 Clear filters
               </button>
@@ -497,13 +509,13 @@ export default function JobsPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="job-form-title"
-            className="app-modal-panel my-auto max-w-xl p-6 sm:p-8"
+            className="app-modal-panel my-auto max-w-xl"
           >
-            <div className="flex items-start justify-between gap-4">
+            <div className={`flex items-start justify-between gap-4 border-b px-6 py-5 ${editingId !== null ? "border-amber-200 bg-amber-50/70" : "border-indigo-200 bg-indigo-50/70"}`}>
               <div>
                 <h2
                   id="job-form-title"
-                  className="text-xl font-bold text-slate-900"
+                  className={`text-xl font-bold ${editingId !== null ? "text-amber-950" : "text-indigo-950"}`}
                 >
                   {editingId !== null ? "Edit saved job" : "Save a job"}
                 </h2>
@@ -519,7 +531,7 @@ export default function JobsPage() {
                 type="button"
                 aria-label="Close form"
                 onClick={closeForm}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="app-icon-button app-icon-button-ghost shrink-0"
               >
                 <X size={20} />
               </button>
@@ -528,7 +540,7 @@ export default function JobsPage() {
             <form
               noValidate
               onSubmit={handleSaveJob}
-              className="mt-6 space-y-4"
+              className="space-y-4 p-6"
             >
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField label="Company *">
@@ -666,7 +678,7 @@ export default function JobsPage() {
 
             <h2
               id="delete-job-dialog-title"
-              className="mt-5 text-lg font-bold text-slate-900"
+              className="mx-auto mt-5 w-fit rounded-lg bg-red-50 px-3 py-2 text-lg font-bold text-red-800"
             >
               Delete this job?
             </h2>
@@ -679,14 +691,14 @@ export default function JobsPage() {
               <button
                 type="button"
                 onClick={() => setJobToDelete(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                className="app-button-secondary"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmDeleteJob}
-                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+                className="app-button-danger"
               >
                 Delete job
               </button>
@@ -713,27 +725,6 @@ export default function JobsPage() {
       `}</style>
       {analysisJob && <ResumeAnalysisDialog key={analysisJob.id} job={jobs.find((job) => job.id === analysisJob.id) ?? analysisJob} initialView={analysisView} onAnalysisChange={refreshJobs} onClose={() => setAnalysisJob(null)} />}
     </WorkspaceLayout>
-  );
-}
-
-function Summary({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: number;
-  icon: ReactNode;
-}) {
-  return (
-    <div className="app-surface flex items-center justify-between p-5">
-      <div>
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
-      </div>
-
-      <div className="rounded-xl bg-blue-50 p-3 text-blue-600">{icon}</div>
-    </div>
   );
 }
 

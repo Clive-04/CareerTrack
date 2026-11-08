@@ -121,9 +121,13 @@ export default function JobDescription({ description }: { description: string })
           type="button"
           aria-expanded={expanded}
           onClick={() => setExpanded((current) => !current)}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 hover:text-indigo-800"
+          className="app-expand-control group mt-4 text-sm"
         >
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          {expanded ? (
+            <ChevronUp className="transition-transform duration-200 group-hover:-translate-y-0.5" size={16} />
+          ) : (
+            <ChevronDown className="transition-transform duration-200 group-hover:translate-y-0.5" size={16} />
+          )}
           {expanded ? "Show less" : "See more"}
         </button>
       )}

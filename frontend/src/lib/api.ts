@@ -87,7 +87,11 @@ export type ResumeAnalysis = {
   suggestions: string[];
 };
 
-export type AnalysisPreview = { resume_text: string; job_description: string };
+export type AnalysisPreview = {
+  resume_text: string;
+  skills_context: string;
+  job_description: string;
+};
 
 export function getAnalysisHistory(token: string, jobId: string) {
   return apiRequest<ResumeAnalysis[]>(`/jobs/${jobId}/analyses`, { token });
