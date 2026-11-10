@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { LogOut, Menu } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import BrandLogo from "@/components/BrandLogo";
 
 type TopNavbarProps = {
   mobileMenuOpen: boolean;
@@ -42,6 +43,8 @@ export default function TopNavbar({
         >
           <Menu size={20} />
         </button>
+
+        <BrandLogo className="h-7 w-7 sm:h-8 sm:w-8 lg:hidden" />
 
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-xs font-medium text-slate-400">

@@ -24,6 +24,11 @@ export const metadata: Metadata = {
     template: "%s | CareerTrack",
   },
   description: "A private workspace for organizing your job search, applications, resumes, and AI-assisted career insights.",
+  icons: {
+    icon: [{ url: "/careertrack-logo.png", type: "image/png", sizes: "256x256" }],
+    shortcut: "/careertrack-logo.png",
+    apple: [{ url: "/careertrack-logo.png", sizes: "256x256", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

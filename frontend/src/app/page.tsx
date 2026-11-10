@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import BrandLogo from "@/components/BrandLogo";
 
 const features = [
   {
@@ -102,9 +103,8 @@ export default function LandingPage() {
       <header className="relative z-20 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8">
           <Link href="/" className="flex items-center gap-3" aria-label="CareerTrack home">
-            <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-200">
-              <BriefcaseBusiness size={21} />
-              <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-cyan-400" />
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-md shadow-indigo-100 ring-1 ring-slate-200/70 transition-transform duration-300 hover:-rotate-3">
+              <BrandLogo className="h-10 w-10" priority />
             </span>
             <span>
               <span className="block text-lg font-bold tracking-[-0.03em]">CareerTrack</span>
@@ -255,7 +255,7 @@ export default function LandingPage() {
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <div className="flex items-center gap-2 font-semibold text-slate-700"><BriefcaseBusiness size={17} className="text-indigo-600" /> CareerTrack</div>
+          <div className="flex items-center gap-2 font-semibold text-slate-700"><BrandLogo className="h-6 w-6" /> CareerTrack</div>
           <p>Stay organized. Move forward.</p>
           <Link href="/login" className="font-semibold text-indigo-600 hover:text-indigo-800">Log in to your workspace</Link>
         </div>
