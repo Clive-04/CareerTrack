@@ -49,7 +49,7 @@ class ResumeUploadsTest(unittest.TestCase):
         resume = owned_resume(uuid.UUID(result.id), self.user, self.db)
         old_path = storage.stored_path(resume.file_path)
         response = download_resume(resume.id, self.user, self.db)
-        self.assertEqual(Path(response.path).read_bytes(), b"%PDF-1.7\nexample")
+        self.assertEqual(response.body, b"%PDF-1.7\nexample")
         save_document(self.metadata, None, self.user, self.db, resume)
         self.assertEqual(storage.stored_path(resume.file_path), old_path)
         save_document(self.metadata, self.upload(b"%PDF-1.7\nreplacement"), self.user, self.db, resume)

@@ -1,4 +1,5 @@
 """Local text extraction. No resume content is sent to an AI service."""
+from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -10,15 +11,15 @@ MAX_XML = 10 * 1024 * 1024
 WORD = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
 
-def extract_text(path: Path) -> str:
+def extract_text_bytes(data: bytes, suffix: str) -> str:
     """Return readable text, or an empty string when extraction is unavailable.
 
     Uploads remain downloadable even if malformed, scanned, encrypted, or too
     complex to extract. None in the database means extraction hasn't run yet.
     """
     try:
-        if path.suffix.lower() == ".pdf":
-            reader = PdfReader(path)
+        if suffix.lower() == ".pdf":
+            reader = PdfReader(BytesIO(data))
             if reader.is_encrypted or len(reader.pages) > 100:
                 return ""
             parts = []
@@ -30,8 +31,8 @@ def extract_text(path: Path) -> str:
                     return ""
                 parts.append(text)
             text = "\n".join(parts)
-        elif path.suffix.lower() == ".docx":
-            with ZipFile(path) as archive:
+        elif suffix.lower() == ".docx":
+            with ZipFile(BytesIO(data)) as archive:
                 info = archive.getinfo("word/document.xml")
                 if info.file_size > MAX_XML:
                     return ""
@@ -51,4 +52,12 @@ def extract_text(path: Path) -> str:
         return text if len(text) <= MAX_TEXT else ""
     except Exception:
         # Document parser errors must not expose document contents or prevent saving.
+        return ""
+
+
+def extract_text(path: Path) -> str:
+    """Compatibility wrapper used by local extraction tests and maintenance tools."""
+    try:
+        return extract_text_bytes(path.read_bytes(), path.suffix)
+    except OSError:
         return ""

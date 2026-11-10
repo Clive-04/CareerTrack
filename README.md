@@ -1,49 +1,53 @@
-\# CareerTrack
+# CareerTrack
 
 CareerTrack is an AI-powered job application and resume management platform.
 
-\## Project Goal
+## Project Goal
 
 CareerTrack helps job seekers:
 
 
-\- Track job applications
+- Track job applications
 
-\- Manage multiple resume versions
+- Manage multiple resume versions
 
-\- Track application status
+- Track application status
 
-\- Schedule and manage interviews
+- Schedule and manage interviews
 
-\- Analyze resumes
+- Analyze resumes
 
-\- Compare resumes with job requirements
+- Compare resumes with job requirements
 
-\- Identify missing skills
+- Identify missing skills
 
-\- Receive AI-powered resume improvement suggestions
-
-
-
-\## Technology Stack
+- Receive AI-powered resume improvement suggestions
 
 
 
-\- Frontend: Next.js + TypeScript
+## Technology Stack
 
-\- Backend: Python + FastAPI
 
-\- Database: PostgreSQL
 
-\- ORM: SQLAlchemy
+- Frontend: Next.js + TypeScript
 
-\- Migrations: Alembic
+- Backend: Python + FastAPI
 
-\- Authentication: JWT
+- Database: PostgreSQL
 
-\- AI: LLM API
+- ORM: SQLAlchemy
 
-\- Development: Docker
+- Migrations: Alembic
 
-\- Version Control: Git + GitHub
+- Authentication: JWT
+
+- AI: Gemini API
+
+- Development: Docker
+
+- Version Control: Git + GitHub
+
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the free Vercel, Render, and Supabase deployment process.
 

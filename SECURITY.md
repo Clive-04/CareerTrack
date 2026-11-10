@@ -7,12 +7,13 @@
 - Use an HTTPS frontend URL in `FRONTEND_ORIGINS`.
 - Set `ALLOWED_HOSTS` to the deployed API hostname, without `*`.
 - Set `FORCE_HTTPS=true` and configure the reverse proxy to forward the original scheme.
-- Set `NEXT_PUBLIC_API_URL` to the public HTTPS API URL before building the frontend.
+- For the Vercel deployment, set `NEXT_PUBLIC_API_URL=/api` and configure the server-only HTTPS `BACKEND_API_URL`. This same-origin proxy keeps browser session cookies first-party.
 - Store `DATABASE_URL`, `JWT_SECRET_KEY`, `GEMINI_API_KEY`, and the PostgreSQL password in the deployment platform's secret manager.
 - Leave `DB_ECHO=false` so SQL statements and bound values are not written to production logs.
 - Set `MAX_REQUEST_BYTES` to the largest request the API should accept; the default is 11 MiB to support a 10 MiB résumé plus multipart overhead.
 - Set `AUTH_COOKIE_SECURE=true` in production. Keep `AUTH_COOKIE_SAMESITE=lax` when frontend and API are on the same site; use `none` only for an HTTPS cross-site deployment.
 - Set `AUTH_COOKIE_DOMAIN` only when the session must be shared with a specific parent domain. Do not use an unnecessarily broad cookie domain.
+- Set `RESUME_STORAGE_BACKEND=s3` on ephemeral hosts. Keep the Supabase S3 bucket private and store its endpoint and credentials only in Render's secret environment variables.
 
 The backend intentionally refuses to start in production when HTTPS origins, host restrictions, or HTTPS enforcement are missing.
 
@@ -22,7 +23,7 @@ The backend intentionally refuses to start in production when HTTPS origins, hos
 - Keep gateway or load-balancer rate limits on `/auth/login`, `/auth/register`, and AI analysis endpoints. The API has per-process defense-in-depth limits, but a gateway is required for consistent limits across multiple workers or instances.
 - Do not expose PostgreSQL to the public internet. The development Compose file binds it to localhost only.
 - Run the API and frontend as non-root users with read-only application filesystems where supported.
-- Back up PostgreSQL and private resume uploads, encrypt backups, and test restoration regularly.
+- Back up PostgreSQL and private resume uploads, encrypt backups, and test restoration regularly. Free plans do not provide a production-grade backup guarantee.
 - Send application logs to centralized monitoring, alert on repeated authentication failures, and never log tokens, passwords, resume text, or API keys.
 - Run `npm audit --omit=dev` and `python -m pip_audit -r backend/requirements.txt` in CI.
 

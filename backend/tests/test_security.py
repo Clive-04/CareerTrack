@@ -63,6 +63,35 @@ class SecurityTests(unittest.TestCase):
                 AUTH_COOKIE_SECURE=False,
             )
 
+    def test_s3_storage_requires_complete_https_configuration(self):
+        base = {
+            "_env_file": None,
+            "DATABASE_URL": "sqlite://",
+            "JWT_SECRET_KEY": "a-secure-random-secret-that-is-long-enough",
+            "RESUME_STORAGE_BACKEND": "s3",
+        }
+        with self.assertRaises(ValidationError):
+            Settings(**base)
+        with self.assertRaises(ValidationError):
+            Settings(
+                **base,
+                S3_ENDPOINT_URL="http://storage.example.test",
+                S3_REGION="test-region",
+                S3_ACCESS_KEY_ID="access",
+                S3_SECRET_ACCESS_KEY="secret",
+                S3_BUCKET="resumes",
+            )
+
+        configured = Settings(
+            **base,
+            S3_ENDPOINT_URL="https://storage.example.test",
+            S3_REGION="test-region",
+            S3_ACCESS_KEY_ID="access",
+            S3_SECRET_ACCESS_KEY="secret",
+            S3_BUCKET="resumes",
+        )
+        self.assertEqual(configured.RESUME_STORAGE_BACKEND, "s3")
+
     def test_registration_requires_stronger_bcrypt_safe_password(self):
         with self.assertRaises(ValidationError):
             UserRegister(
