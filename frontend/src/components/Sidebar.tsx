@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import BrandLogo from "@/components/BrandLogo";
 
 const navigationItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -83,9 +84,8 @@ export default function Sidebar({
 
         <div className="relative flex h-20 items-center justify-between gap-3 border-b border-white/8 px-5">
           <Link href="/dashboard" onClick={closeMobileMenu} className="group flex min-w-0 items-center gap-3">
-            <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 shadow-lg shadow-indigo-950/35 transition group-hover:scale-[1.03]">
-              <BriefcaseBusiness size={21} />
-              <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-[#111827] bg-cyan-300" />
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-lg shadow-indigo-950/25 transition-transform duration-300 group-hover:-rotate-3">
+              <BrandLogo className="h-10 w-10" priority />
             </span>
             <span className="min-w-0">
               <span className="block truncate text-lg font-bold tracking-[-0.025em]">CareerTrack</span>
