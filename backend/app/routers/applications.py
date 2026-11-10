@@ -124,7 +124,7 @@ def get_applications(
     response_model=ApplicationResponse,
 )
 def get_application(
-    application_id: str,
+    application_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -159,7 +159,7 @@ def get_application(
     response_model=ApplicationResponse,
 )
 def update_application(
-    application_id: str,
+    application_id: UUID,
     application_data: ApplicationUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -211,7 +211,7 @@ def update_application(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_application(
-    application_id: str,
+    application_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

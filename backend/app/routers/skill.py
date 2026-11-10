@@ -1,6 +1,5 @@
-import uuid
-
 from fastapi import APIRouter, Depends, HTTPException, status
+from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -90,20 +89,11 @@ def get_skills(
     response_model=SkillResponse,
 )
 def get_skill(
-    skill_id: str,
+    skill_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    import uuid
-
-    try:
-        skill_uuid = uuid.UUID(skill_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Invalid skill ID",
-        )
-
+    skill_uuid = UUID(str(skill_id))
     skill = db.query(Skill).filter(Skill.id == skill_uuid, Skill.user_id == current_user.id).first()
 
     if skill is None:
@@ -119,19 +109,12 @@ def get_skill(
     response_model=SkillResponse,
 )
 def update_skill(
-    skill_id: str,
+    skill_id: UUID,
     skill_data: SkillUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    try:
-        skill_uuid = uuid.UUID(skill_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Invalid skill ID",
-        )
-
+    skill_uuid = UUID(str(skill_id))
     skill = db.query(Skill).filter(Skill.id == skill_uuid, Skill.user_id == current_user.id).first()
 
     if skill is None:
@@ -184,18 +167,11 @@ def update_skill(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_skill(
-    skill_id: str,
+    skill_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    try:
-        skill_uuid = uuid.UUID(skill_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Invalid skill ID",
-        )
-
+    skill_uuid = UUID(str(skill_id))
     skill = db.query(Skill).filter(Skill.id == skill_uuid, Skill.user_id == current_user.id).first()
 
     if skill is None:

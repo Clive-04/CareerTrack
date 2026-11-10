@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -99,9 +100,9 @@ def create_job(
     response_model=list[JobResponse],
 )
 def get_jobs(
-    search: str | None = Query(default=None),
-    location: str | None = Query(default=None),
-    employment_type: str | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=200),
+    location: str | None = Query(default=None, max_length=200),
+    employment_type: str | None = Query(default=None, max_length=50),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -141,7 +142,7 @@ def get_jobs(
     response_model=JobResponse,
 )
 def get_job(
-    job_id: str,
+    job_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -167,7 +168,7 @@ def get_job(
     response_model=JobResponse,
 )
 def update_job(
-    job_id: str,
+    job_id: UUID,
     job_data: JobUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -190,6 +191,10 @@ def update_job(
         validate_job_description(update_data.get("description", job.description))
     except ValueError as error:
         raise HTTPException(422, str(error)) from None
+    salary_min = update_data.get("salary_min", job.salary_min)
+    salary_max = update_data.get("salary_max", job.salary_max)
+    if salary_min is not None and salary_max is not None and salary_min > salary_max:
+        raise HTTPException(422, "Maximum salary must be greater than or equal to minimum salary")
 
     for field, value in update_data.items():
         setattr(job, field, value)
@@ -206,7 +211,7 @@ def update_job(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_job(
-    job_id: str,
+    job_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

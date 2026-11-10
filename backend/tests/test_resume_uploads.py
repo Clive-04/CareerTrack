@@ -108,11 +108,16 @@ class ResumeUploadsTest(unittest.TestCase):
         resume.parsed_text = None
         self.db.commit()
         result = extract_resume(resume.id, self.user, self.db)
-        self.assertEqual(result.parsed_text, "Python developer")
+        self.assertNotIn("parsed_text", result.model_dump())
+        self.db.refresh(resume)
+        self.assertEqual(resume.parsed_text, "Python developer")
         with self.assertRaises(HTTPException):
             extract_resume(resume.id, self.other, self.db)
         result = save_document(self.metadata, self.upload(), self.user, self.db, resume)
-        self.assertEqual(result.parsed_text, "")
+        self.assertNotIn("file_path", result.model_dump())
+        self.assertNotIn("parsed_text", result.model_dump())
+        self.db.refresh(resume)
+        self.assertEqual(resume.parsed_text, "")
         self.assertEqual(result.extraction_status, "unavailable")
         self.assertTrue(result.has_file)
 

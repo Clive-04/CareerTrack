@@ -83,7 +83,9 @@ export default function LandingPage() {
     return () => observer.disconnect();
   }, []);
 
-  if (isLoading || user) {
+  // The landing page is public, so do not hide it while the background
+  // session check waits for the API. Signed-in users are still redirected.
+  if (user) {
     return (
       <main className="app-shell flex min-h-screen items-center justify-center p-6">
         <div className="app-surface flex items-center gap-3 px-5 py-4">

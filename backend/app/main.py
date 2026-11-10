@@ -5,6 +5,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy import text
 
 from app.core.config import settings
+from app.core.middleware import CookieCSRFMiddleware, LimitRequestBodyMiddleware
 from app.db.session import get_db
 from sqlalchemy.orm import Session
 from app.routers.auth import router as auth_router
@@ -36,10 +37,12 @@ if settings.FORCE_HTTPS:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.frontend_origins,
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
 )
+app.add_middleware(LimitRequestBodyMiddleware, max_bytes=settings.MAX_REQUEST_BYTES)
+app.add_middleware(CookieCSRFMiddleware)
 
 
 @app.middleware("http")
@@ -49,7 +52,13 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    if request.url.path.startswith("/auth") or "authorization" in request.headers:
+    if settings.ENVIRONMENT == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+    if (
+        request.url.path.startswith("/auth")
+        or "authorization" in request.headers
+        or settings.AUTH_COOKIE_NAME in request.cookies
+    ):
         response.headers["Cache-Control"] = "no-store"
     return response
 

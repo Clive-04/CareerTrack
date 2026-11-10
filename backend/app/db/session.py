@@ -8,7 +8,7 @@ from app.core.config import settings
 
 engine = create_engine(
     settings.DATABASE_URL,
-    echo=True,
+    echo=settings.DB_ECHO,
     hide_parameters=True,
     connect_args={"connect_timeout": 5},
     pool_timeout=5,

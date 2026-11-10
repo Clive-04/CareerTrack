@@ -1,4 +1,9 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator
+
+
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 
 
 def validate_bcrypt_password(value: str) -> str:
@@ -8,12 +13,18 @@ def validate_bcrypt_password(value: str) -> str:
 
 
 class UserRegister(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     email: EmailStr
     password: str = Field(min_length=12, max_length=72)
-    first_name: str = Field(min_length=1, max_length=100)
-    last_name: str = Field(min_length=1, max_length=100)
+    first_name: Name
+    last_name: Name
 
     _validate_password = field_validator("password")(validate_bcrypt_password)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().casefold()
 
     @field_validator("password")
     @classmethod
@@ -27,10 +38,16 @@ class UserRegister(BaseModel):
         return value
 
 class UserLogin(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     email: EmailStr
     password: str = Field(min_length=1, max_length=72)
 
     _validate_password = field_validator("password")(validate_bcrypt_password)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().casefold()
 
 class UserResponse(BaseModel):
     id: str
@@ -39,6 +56,6 @@ class UserResponse(BaseModel):
     last_name: str
 
 
-class AccessTokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+class SessionResponse(BaseModel):
+    user: UserResponse
+    csrf_token: str

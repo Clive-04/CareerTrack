@@ -10,7 +10,7 @@ type ContextValue = { resumes: Resume[]; extractResume: (id: string) => Promise<
 const ResumesContext = createContext<ContextValue | null>(null);
 
 function mapResume(item: ApiResume): Resume { return { id: item.id, extractionStatus: item.extraction_status, hasFile: item.has_file, name: item.name, targetRole: item.target_role, fileName: item.file_name, updatedAt: item.updated_at.slice(0, 10), skills: item.skills, isDefault: item.is_default, notes: item.notes }; }
-function payload(input: ResumeInput, isDefault = input.isDefault ?? false) { return { name: input.name, target_role: input.targetRole, file_name: input.fileName, file_path: input.fileName, skills: input.skills, notes: input.notes, is_default: isDefault }; }
+function payload(input: ResumeInput, isDefault = input.isDefault ?? false) { return { name: input.name, target_role: input.targetRole, file_name: input.fileName, skills: input.skills, notes: input.notes, is_default: isDefault }; }
 
 export default function ResumesProvider({ children }: { children: ReactNode }) {
   const { token, isLoading: authLoading } = useAuth();

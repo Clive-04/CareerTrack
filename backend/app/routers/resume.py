@@ -23,8 +23,7 @@ def to_response(resume: Resume) -> ResumeResponse:
     return ResumeResponse(
         extraction_status=("ready" if resume.parsed_text else "pending" if resume.parsed_text is None else "unavailable"),
         id=str(resume.id), name=resume.name, target_role=resume.target_role,
-        file_name=resume.file_name, file_path=resume.file_path,
-        parsed_text=resume.parsed_text,
+        file_name=resume.file_name,
         skills=json.loads(resume.skills_json or "[]"), notes=resume.notes or "",
         is_default=resume.is_default, created_at=resume.created_at,
         updated_at=resume.updated_at,
@@ -179,7 +178,7 @@ def get_resumes(
     response_model=ResumeResponse,
 )
 def get_resume(
-    resume_id: str,
+    resume_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -205,7 +204,7 @@ def get_resume(
     response_model=ResumeResponse,
 )
 def update_resume(
-    resume_id: str,
+    resume_id: UUID,
     resume_data: ResumeUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -242,7 +241,7 @@ def update_resume(
             existing_default.is_default = False
 
     for field, value in update_data.items():
-        if field in {"file_path", "file_name"}:
+        if field == "file_name":
             continue  # Stored file identity is controlled only by the upload endpoint.
         if field == "skills":
             value = json.dumps(value)
@@ -259,7 +258,7 @@ def update_resume(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_resume(
-    resume_id: str,
+    resume_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

@@ -8,6 +8,8 @@ Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max
 
 
 class PreviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     resume_id: UUID
 
 

@@ -12,11 +12,10 @@ import useDialogControls from "@/hooks/useDialogControls";
 import {
   getCurrentUser,
   login as loginRequest,
+  logout as logoutRequest,
   register as registerRequest,
   type ApiUser,
 } from "@/lib/api";
-
-const authTokenKey = "careertrack.auth.token";
 
 type AuthContextValue = {
   user: ApiUser | null;
@@ -36,46 +35,36 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<ApiUser | null>(null);
-  const [token, setToken] = useState<string | null>(() =>
-    typeof window === "undefined"
-      ? null
-      : window.localStorage.getItem(authTokenKey),
-  );
-  const [isLoading, setIsLoading] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      Boolean(window.localStorage.getItem(authTokenKey)),
-  );
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
 
   useDialogControls(showLogoutConfirmation, () => setShowLogoutConfirmation(false));
 
   useEffect(() => {
-    const storedToken = token;
-
-    if (!storedToken) {
-      return;
-    }
-
     let active = true;
-    getCurrentUser(storedToken)
-      .then((profile) => { if (active) setUser(profile); })
+    // Remove tokens created by older CareerTrack builds. Authentication now
+    // lives only in an HttpOnly cookie that JavaScript cannot read.
+    window.localStorage.removeItem("careertrack.auth.token");
+    getCurrentUser()
+      .then((session) => {
+        if (!active) return;
+        setUser(session.user);
+        setToken(session.csrf_token);
+      })
       .catch(() => {
         if (!active) return;
-        window.localStorage.removeItem(authTokenKey);
         setToken(null);
         setUser(null);
       })
       .finally(() => { if (active) setIsLoading(false); });
     return () => { active = false; };
-  }, [token]);
+  }, []);
 
   async function login(email: string, password: string) {
     const result = await loginRequest(email, password);
-    const profile = await getCurrentUser(result.access_token);
-    window.localStorage.setItem(authTokenKey, result.access_token);
-    setToken(result.access_token);
-    setUser(profile);
+    setToken(result.csrf_token);
+    setUser(result.user);
   }
 
   async function register(
@@ -92,10 +81,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     setShowLogoutConfirmation(true);
   }
 
-  function confirmLogout() {
+  async function confirmLogout() {
     setShowLogoutConfirmation(false);
-    window.localStorage.removeItem(authTokenKey);
-    window.location.replace("/");
+    try {
+      if (token) await logoutRequest(token);
+    } finally {
+      setToken(null);
+      setUser(null);
+      window.location.replace("/");
+    }
   }
 
   return (

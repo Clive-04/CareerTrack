@@ -10,14 +10,17 @@ const user = {
 const jobDescription = "Build accessible web interfaces for customers using React and TypeScript. Collaborate with designers and backend engineers to deliver reliable features, review code, document decisions, and improve automated tests. The role requires clear communication, responsive design experience, version control knowledge, API integration skills, practical debugging, and careful attention to usability, performance, security, and maintainable frontend architecture.";
 
 async function mockCareerTrackApi(page: Page) {
+  let authenticated = false;
+  const session = { user, csrf_token: "e2e-csrf-token" };
   const handleApiRoute = async (route: Route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace(/^\/api-test/, "");
     const method = request.method();
     const corsHeaders = {
-      "Access-Control-Allow-Headers": "Authorization, Content-Type",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type, X-CSRF-Token",
       "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": "http://localhost:3000",
+      "Access-Control-Allow-Credentials": "true",
     };
     const fulfillJson = (json: unknown, status = 200) => route.fulfill({
       status,
@@ -32,7 +35,8 @@ async function mockCareerTrackApi(page: Page) {
     }
 
     if (method === "POST" && path === "/auth/login") {
-      await fulfillJson({ access_token: "e2e-token", token_type: "bearer" });
+      authenticated = true;
+      await fulfillJson(session);
       return;
     }
 
@@ -42,7 +46,13 @@ async function mockCareerTrackApi(page: Page) {
     }
 
     if (method === "GET" && path === "/auth/me") {
-      await fulfillJson(user);
+      await fulfillJson(authenticated ? session : { detail: "Authentication required" }, authenticated ? 200 : 401);
+      return;
+    }
+
+    if (method === "POST" && path === "/auth/logout") {
+      authenticated = false;
+      await route.fulfill({ status: 204, headers: corsHeaders });
       return;
     }
 
@@ -75,8 +85,6 @@ async function mockCareerTrackApi(page: Page) {
           name: "Frontend Resume",
           target_role: "Frontend Developer",
           file_name: "resume.pdf",
-          file_path: "resume.pdf",
-          parsed_text: "Frontend developer with React experience.",
           skills: ["React", "TypeScript"],
           notes: "",
           is_default: true,

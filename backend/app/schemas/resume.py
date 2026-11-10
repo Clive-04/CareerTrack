@@ -1,14 +1,20 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+
+
+ResumeSkill = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 
 
 class ResumeCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1, max_length=150)
     target_role: str = Field(default="", max_length=150)
     file_name: str = Field(default="", max_length=255)
-    file_path: str = Field(default="", max_length=500)
-    skills: list[str] = Field(default_factory=list)
-    notes: str = ""
+    skills: list[ResumeSkill] = Field(default_factory=list, max_length=100)
+    notes: str = Field(default="", max_length=20000)
     is_default: bool = False
 
 class ResumeResponse(BaseModel):
@@ -17,8 +23,6 @@ class ResumeResponse(BaseModel):
     id: str
     name: str
     file_name: str
-    file_path: str
-    parsed_text: str | None
     target_role: str
     skills: list[str]
     notes: str
@@ -27,6 +31,8 @@ class ResumeResponse(BaseModel):
     updated_at: datetime
 
 class ResumeUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = Field(
         default=None,
         min_length=1,
@@ -34,8 +40,7 @@ class ResumeUpdate(BaseModel):
     )
     target_role: str | None = Field(default=None, max_length=150)
     file_name: str | None = Field(default=None, min_length=1, max_length=255)
-    file_path: str | None = Field(default=None, min_length=1, max_length=500)
-    skills: list[str] | None = None
-    notes: str | None = None
+    skills: list[ResumeSkill] | None = Field(default=None, max_length=100)
+    notes: str | None = Field(default=None, max_length=20000)
 
     is_default: bool | None = None

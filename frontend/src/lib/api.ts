@@ -8,6 +8,11 @@ export type ApiUser = {
   last_name: string;
 };
 
+export type ApiSession = {
+  user: ApiUser;
+  csrf_token: string;
+};
+
 export type ApiJob = {
   id: string;
   company: string;
@@ -53,8 +58,6 @@ export type ApiResume = {
   name: string;
   target_role: string;
   file_name: string;
-  file_path: string;
-  parsed_text: string | null;
   skills: string[];
   notes: string;
   is_default: boolean;
@@ -124,15 +127,17 @@ export async function apiRequest<T>(
   { token, headers, ...options }: ApiRequestOptions = {},
 ): Promise<T> {
   try {
+    const method = (options.method ?? "GET").toUpperCase();
+    const requiresCsrf = !["GET", "HEAD", "OPTIONS", "TRACE"].includes(method);
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       cache: options.cache ?? "no-store",
-      credentials: "omit",
+      credentials: "include",
       referrerPolicy: "no-referrer",
       signal: options.signal ?? AbortSignal.timeout(30000),
       headers: {
         ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(token && requiresCsrf ? { "X-CSRF-Token": token } : {}),
         ...headers,
       },
     });
@@ -163,8 +168,8 @@ export async function apiRequest<T>(
   }
 }
 
-export function getCurrentUser(token: string) {
-  return apiRequest<ApiUser>("/auth/me", { token });
+export function getCurrentUser() {
+  return apiRequest<ApiSession>("/auth/me");
 }
 
 export function getJobs(token: string) {
@@ -299,8 +304,8 @@ export function saveResumeDocument(token: string, id: string | null, metadata: R
 export async function downloadResumeFile(token: string, id: string) {
   const response = await fetch(`${API_BASE_URL}/resumes/${id}/download`, {
     cache: "no-store",
-    credentials: "omit",
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include",
+    headers: { "X-CSRF-Token": token },
     referrerPolicy: "no-referrer",
   });
   if (!response.ok) {
@@ -318,13 +323,20 @@ export function updateSkill(token: string, id: string, data: Record<string, unkn
 export function deleteSkill(token: string, id: string) { return apiRequest<void>(`/skills/${id}`, { method: "DELETE", token }); }
 
 export async function login(email: string, password: string) {
-  return apiRequest<{ access_token: string; token_type: string }>(
+  return apiRequest<ApiSession>(
     "/auth/login",
     {
       method: "POST",
       body: JSON.stringify({ email, password }),
     },
   );
+}
+
+export async function logout(csrfToken: string) {
+  return apiRequest<void>("/auth/logout", {
+    method: "POST",
+    token: csrfToken,
+  });
 }
 
 export async function register(
