@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -102,7 +103,7 @@ def get_interviews(
     response_model=InterviewResponse
 )
 def get_interview(
-    interview_id: str,
+    interview_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -137,7 +138,7 @@ def get_interview(
     response_model=InterviewResponse
 )
 def update_interview(
-    interview_id: str,
+    interview_id: UUID,
     interview_data: InterviewUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -181,7 +182,7 @@ def update_interview(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_interview(
-    interview_id: str,
+    interview_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

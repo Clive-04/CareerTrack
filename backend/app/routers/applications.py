@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
 from app.db.session import get_db
-from app.models import Application, Job, User
+from app.models import Application, Job, Resume, User
 from app.schemas.application import (
     ApplicationCreate,
     ApplicationResponse,
@@ -16,6 +17,23 @@ router = APIRouter(
     prefix="/applications",
     tags=["Applications"],
 )
+
+
+def owned_resume_id(resume_id: UUID | None, current_user: User, db: Session):
+    if resume_id is None:
+        return None
+    resume = db.scalar(
+        select(Resume).where(
+            Resume.id == resume_id,
+            Resume.user_id == current_user.id,
+        )
+    )
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found",
+        )
+    return resume.id
 
 
 @router.post(
@@ -44,7 +62,7 @@ def create_application(
     new_application = Application(
         user_id=current_user.id,
         job_id=job.id,
-        resume_id=application_data.resume_id,
+        resume_id=owned_resume_id(application_data.resume_id, current_user, db),
         status=application_data.status,
         date_applied=application_data.date_applied,
         notes=application_data.notes,
@@ -106,7 +124,7 @@ def get_applications(
     response_model=ApplicationResponse,
 )
 def get_application(
-    application_id: str,
+    application_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -141,7 +159,7 @@ def get_application(
     response_model=ApplicationResponse,
 )
 def update_application(
-    application_id: str,
+    application_id: UUID,
     application_data: ApplicationUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -162,6 +180,11 @@ def update_application(
     update_data = application_data.model_dump(
         exclude_unset=True
     )
+
+    if "resume_id" in update_data:
+        update_data["resume_id"] = owned_resume_id(
+            update_data["resume_id"], current_user, db
+        )
 
     for field, value in update_data.items():
         setattr(application, field, value)
@@ -184,11 +207,11 @@ def update_application(
 
 
 @router.delete(
-    "/{application.id}",
+    "/{application_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_application(
-    application_id: str,
+    application_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
