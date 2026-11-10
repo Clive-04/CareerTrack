@@ -1,10 +1,12 @@
 import json
+from pathlib import Path
+from urllib.parse import quote
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Form, File, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from pydantic import ValidationError
-from app.core.resume_storage import stored_path, save_upload, remove_file
-from app.core.resume_text import extract_text
+from app.core.resume_storage import has_file, read_file, save_upload, remove_file
+from app.core.resume_text import extract_text_bytes
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
@@ -27,7 +29,7 @@ def to_response(resume: Resume) -> ResumeResponse:
         skills=json.loads(resume.skills_json or "[]"), notes=resume.notes or "",
         is_default=resume.is_default, created_at=resume.created_at,
         updated_at=resume.updated_at,
-        has_file=bool(stored_path(resume.file_path) and stored_path(resume.file_path).is_file()),
+        has_file=has_file(resume.file_path),
     )
 
 
@@ -52,14 +54,14 @@ def save_document(metadata: str, file: UploadFile | None, user: User, db: Sessio
     key = None
     try:
         if file is not None:
-            key, filename = save_upload(file)
+            key, filename, data = save_upload(file)
         if resume is None:
             resume = Resume(user_id=user.id, file_path=key, file_name=filename)
             db.add(resume)
         if key:
             resume.file_path = key
             resume.file_name = filename
-            resume.parsed_text = extract_text(stored_path(key))
+            resume.parsed_text = extract_text_bytes(data, Path(filename).suffix)
         resume.name = details.name.strip()
         resume.target_role = details.target_role
         resume.skills_json = json.dumps(details.skills)
@@ -95,20 +97,32 @@ def replace_resume(resume_id: UUID, metadata: str = Form(...), file: UploadFile 
 @router.get("/{resume_id}/download")
 def download_resume(resume_id: UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     resume = owned_resume(resume_id, current_user, db)
-    path = stored_path(resume.file_path)
-    if path is None or not path.is_file():
+    data = read_file(resume.file_path)
+    if data is None:
         raise HTTPException(404, "No file uploaded yet. Edit this resume to upload its file.")
-    media = "application/pdf" if path.suffix == ".pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    return FileResponse(path, media_type=media, filename=resume.file_name, headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+    media = "application/pdf" if resume.file_path.endswith(".pdf") else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    safe_name = resume.file_name.replace('"', "").replace("\r", "").replace("\n", "")
+    fallback_name = safe_name.encode("ascii", "ignore").decode() or "resume" + Path(resume.file_path).suffix
+    return Response(
+        data,
+        media_type=media,
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{fallback_name}"; filename*=UTF-8\'\'{quote(safe_name)}'
+            ),
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.post("/{resume_id}/extract", response_model=ResumeResponse)
 def extract_resume(resume_id: UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     resume = owned_resume(resume_id, current_user, db)
-    path = stored_path(resume.file_path)
-    if path is None or not path.is_file():
+    data = read_file(resume.file_path)
+    if data is None:
         raise HTTPException(404, "Edit this resume to upload its file first.")
-    resume.parsed_text = extract_text(path)
+    resume.parsed_text = extract_text_bytes(data, Path(resume.file_path).suffix)
     db.commit()
     db.refresh(resume)
     return to_response(resume)

@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     ALLOWED_HOSTS: str = "localhost,127.0.0.1,testserver"
     FORCE_HTTPS: bool = False
     MAX_REQUEST_BYTES: int = Field(default=11 * 1024 * 1024, ge=1024, le=25 * 1024 * 1024)
+    RESUME_STORAGE_BACKEND: Literal["local", "s3"] = "local"
+    S3_ENDPOINT_URL: str = ""
+    S3_REGION: str = ""
+    S3_ACCESS_KEY_ID: SecretStr = SecretStr("")
+    S3_SECRET_ACCESS_KEY: SecretStr = SecretStr("")
+    S3_BUCKET: str = ""
 
     @field_validator("JWT_SECRET_KEY")
     @classmethod
@@ -43,6 +49,7 @@ class Settings(BaseSettings):
         if self.AUTH_COOKIE_SAMESITE == "none" and not self.AUTH_COOKIE_SECURE:
             raise ValueError("SameSite=None cookies must be secure")
         if self.ENVIRONMENT != "production":
+            self._validate_resume_storage()
             return self
 
         origins = self.frontend_origins
@@ -54,7 +61,24 @@ class Settings(BaseSettings):
             raise ValueError("AUTH_COOKIE_SECURE must be enabled in production")
         if "*" in self.allowed_hosts or all(host in {"localhost", "127.0.0.1", "testserver"} for host in self.allowed_hosts):
             raise ValueError("Production ALLOWED_HOSTS must contain the deployed API hostname")
+        self._validate_resume_storage()
         return self
+
+    def _validate_resume_storage(self) -> None:
+        if self.RESUME_STORAGE_BACKEND != "s3":
+            return
+        values = {
+            "S3_ENDPOINT_URL": self.S3_ENDPOINT_URL,
+            "S3_REGION": self.S3_REGION,
+            "S3_ACCESS_KEY_ID": self.S3_ACCESS_KEY_ID.get_secret_value(),
+            "S3_SECRET_ACCESS_KEY": self.S3_SECRET_ACCESS_KEY.get_secret_value(),
+            "S3_BUCKET": self.S3_BUCKET,
+        }
+        missing = [name for name, value in values.items() if not value.strip()]
+        if missing:
+            raise ValueError(f"S3 resume storage requires: {', '.join(missing)}")
+        if not self.S3_ENDPOINT_URL.startswith("https://"):
+            raise ValueError("S3_ENDPOINT_URL must use HTTPS")
 
     @property
     def frontend_origins(self) -> list[str]:
