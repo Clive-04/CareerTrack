@@ -12,7 +12,7 @@ describe("ExpandableSkillList", () => {
     render(<ExpandableSkillList skills={skills} />);
 
     const list = screen.getByRole("list", { name: "Resume skills" });
-    expect(list).toHaveStyle({ maxHeight: "1.5rem", overflow: "hidden" });
+    expect(list).toHaveStyle({ maxHeight: "1.75rem", overflow: "hidden" });
 
     const seeMore = await screen.findByRole("button", { name: "See more" });
     expect(seeMore).toHaveAttribute("aria-expanded", "false");
@@ -20,7 +20,7 @@ describe("ExpandableSkillList", () => {
     fireEvent.click(seeMore);
 
     expect(screen.getByRole("button", { name: "See less" })).toHaveAttribute("aria-expanded", "true");
-    expect(list).not.toHaveStyle({ maxHeight: "1.5rem" });
+    expect(list).not.toHaveStyle({ maxHeight: "1.75rem" });
 
     scrollHeight.mockRestore();
     clientHeight.mockRestore();

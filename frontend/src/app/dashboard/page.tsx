@@ -1,450 +1,244 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { Fragment } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
-import MetricCard from "@/components/MetricCard";
-import {
-  BriefcaseBusiness,
-  FileText,
-  CalendarDays,
-  GraduationCap,
-  Search,
-  Plus,
-  Clock3,
-  CircleCheck,
-  MapPin,
-  Sparkles,
-  AlertTriangle,
-  ArrowRight,
-} from "lucide-react";
+import { CareerTrack, StatusChip } from "@/components/CareerTrack";
 import { useApplications } from "@/components/ApplicationsProvider";
 import { useJobs } from "@/components/JobsProvider";
 import { useInterviews } from "@/components/InterviewsProvider";
 import { getAiDashboardInsights, getApplicationPipeline } from "@/lib/dashboardInsights";
-
-const statusStyles: Record<string, string> = {
-  Applied: "bg-blue-50 text-blue-700",
-  Interview: "bg-green-50 text-green-700",
-  "In Review": "bg-amber-50 text-amber-700",
-  Offer: "bg-green-50 text-green-700",
-  Rejected: "bg-red-50 text-red-700",
-};
+import { TRACK_STAGES, isActiveStatus } from "@/lib/applicationStatus";
 
 export default function DashboardPage() {
-  const [search, setSearch] = useState("");
-  const router = useRouter();
-  const { applications: sharedApplications } = useApplications();
-  const { jobs } = useJobs();
+  const { applications, isLoading: applicationsLoading } = useApplications();
+  const { jobs, isLoading: jobsLoading } = useJobs();
   const { interviews } = useInterviews();
   const today = new Date().toLocaleDateString("en-CA");
+
   const upcomingInterviews = interviews
-    .filter(
-      (interview) =>
-        interview.status === "Scheduled" && interview.date >= today,
-    )
-    .sort((a, b) =>
-      `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`),
-    )
+    .filter((interview) => interview.status === "Scheduled" && interview.date >= today)
+    .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
     .slice(0, 3);
 
-  const companyColors: Record<string, string> = {
-    Google: "bg-blue-100 text-blue-700",
-    Microsoft: "bg-sky-100 text-sky-700",
-    Accenture: "bg-purple-100 text-purple-700",
-    Canva: "bg-rose-100 text-rose-700",
-  };
+  const recentApplications = [...applications]
+    .sort((a, b) => b.dateApplied.localeCompare(a.dateApplied) || b.id.localeCompare(a.id))
+    .slice(0, 5);
 
-  const applications = [...sharedApplications]
-    .sort(
-      (a, b) =>
-        b.dateApplied.localeCompare(a.dateApplied) ||
-        b.id.localeCompare(a.id),
-    )
-    .map((application) => ({
-      ...application,
-      initials: application.company.slice(0, 1).toUpperCase(),
-      color:
-        companyColors[application.company] ??
-        "bg-blue-100 text-blue-700",
-      date: new Date(
-        `${application.dateApplied}T12:00:00`,
-      ).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
-    }));
-
-  const filteredApplications = applications.filter((application) =>
-    `${application.company} ${application.position} ${application.status}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
-  const displayedApplications = filteredApplications.slice(0, 5);
-  const { freshAnalyses, outdatedAnalyses, strongestMatch, notAnalyzedCount } = getAiDashboardInsights(jobs);
-  const applicationPipeline = getApplicationPipeline(applications);
+  const pipeline = getApplicationPipeline(applications);
+  const countFor = (status: string) => pipeline.find((item) => item.status === status)?.count ?? 0;
+  const activeCount = applications.filter((application) => isActiveStatus(application.status)).length;
+  const closedCount = countFor("Rejected") + countFor("Withdrawn");
+  const { outdatedAnalyses, strongestMatch, notAnalyzedCount } = getAiDashboardInsights(jobs);
+  const isLoading = applicationsLoading || jobsLoading;
+  const isNewWorkspace = !isLoading && jobs.length === 0 && applications.length === 0;
 
   return (
     <WorkspaceLayout>
-      <div className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
-            <PageHeader
-              eyebrow="Your job search"
-              title="Welcome back!"
-              description="Here's an overview of your job search progress."
-              action={
-                <button
-                  type="button"
-                  onClick={() => router.push("/jobs")}
-                  className="app-button-primary self-start sm:self-auto"
-                >
-                  <Plus size={18} />
-                  Add a job
-                </button>
-              }
-            />
+      <div className="app-page space-y-8">
+        <PageHeader
+          title="Overview"
+          description="Where your job search stands today."
+          action={
+            <Link href="/jobs?new=1" className="app-button-primary">
+              <Plus size={18} aria-hidden="true" />
+              Add job
+            </Link>
+          }
+        />
 
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard
-                label="Total Applications"
-                value={String(applications.length)}
-                icon={FileText}
-                tone="blue"
-              />
-              <MetricCard
-                label="Interviews"
-                value={String(interviews.length)}
-                icon={CalendarDays}
-                tone="violet"
-              />
-              <MetricCard
-                label="Jobs Saved"
-                value={String(jobs.length)}
-                icon={BriefcaseBusiness}
-                tone="amber"
-              />
-              <MetricCard
-                label="Offers Received"
-                value={String(
-                  applications.filter((application) => application.status === "Offer").length,
-                )}
-                icon={CircleCheck}
-                tone="emerald"
-              />
-            </section>
+        {isNewWorkspace ? (
+          <section className="app-surface px-6 py-10 text-center sm:px-10">
+            <CareerTrack status="Saved" className="mx-auto max-w-xs" />
+            <h2 className="app-section-title mt-6">Start your track</h2>
+            <p className="mx-auto mt-2 max-w-md text-[0.9375rem] leading-6 text-slate-500">
+              Add a job you’re interested in. When you apply, track it as an application and it will move along each stage here.
+            </p>
+          </section>
+        ) : (
+          <section aria-labelledby="pipeline-title" className="app-surface p-5 sm:p-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+              <h2 id="pipeline-title" className="app-section-title">Pipeline</h2>
+              <p className="text-sm text-slate-500">
+                <span className="font-semibold text-slate-800 tabular-nums">{activeCount}</span> active
+                {" · "}
+                <span className="font-semibold text-slate-800 tabular-nums">{closedCount}</span> closed
+              </p>
+            </div>
 
-            <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-              <div className="app-surface p-5 sm:p-6 xl:col-span-2">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <div className="rounded-xl bg-violet-50 p-2.5 text-violet-600">
-                        <Sparkles size={20} />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-slate-900">AI Resume Insights</h2>
-                        <p className="mt-1 text-sm text-slate-500">Current comparisons across your saved jobs.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-3 gap-3">
-                  <InsightMetric label="Fresh" value={freshAnalyses.length} style="bg-emerald-50 text-emerald-700" />
-                  <InsightMetric label="Outdated" value={outdatedAnalyses.length} style="bg-amber-50 text-amber-700" />
-                  <InsightMetric label="Not analyzed" value={notAnalyzedCount} style="bg-slate-100 text-slate-700" />
-                </div>
-
-                {strongestMatch ? (
-                  <div className="mt-5 flex flex-col justify-between gap-4 rounded-xl border border-violet-100 bg-violet-50/60 p-4 sm:flex-row sm:items-center">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wider text-violet-600">Strongest current match</p>
-                      <p className="mt-2 font-bold text-slate-900">{strongestMatch.position}</p>
-                      <p className="mt-1 text-sm text-slate-600">{strongestMatch.company}</p>
-                    </div>
-                    <p className="text-2xl font-bold text-violet-700">{strongestMatch.latestAnalysisScore}/100</p>
-                  </div>
-                ) : (
-                  <div className="mt-5 rounded-xl border border-dashed border-slate-200 p-5 text-center">
-                    <p className="text-sm font-semibold text-slate-700">No current AI match yet</p>
-                    <p className="mt-1 text-xs text-slate-500">Analyze a resume against a saved job to see your strongest match here.</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="app-surface p-5 sm:p-6">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-xl bg-amber-50 p-2.5 text-amber-600"><AlertTriangle size={20} /></div>
-                  <div>
-                    <h2 className="font-bold text-slate-900">Needs attention</h2>
-                    <p className="mt-1 text-xs text-slate-500">Outdated AI comparisons</p>
-                  </div>
-                </div>
-                {outdatedAnalyses.length ? (
-                  <div className="mt-5 space-y-3">
-                    {outdatedAnalyses.slice(0, 3).map((job) => (
-                      <div key={job.id} className="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
-                        <p className="text-sm font-semibold text-slate-800">{job.position}</p>
-                        <p className="mt-1 text-xs text-slate-500">{job.company} · Previous score {job.latestAnalysisScore}/100</p>
-                        <p className="mt-2 text-xs font-medium text-amber-700">Open Saved Jobs when you are ready to analyze again.</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">
-                    <p className="font-semibold">No outdated analyses</p>
-                    <p className="mt-1 text-xs leading-5">Your saved AI comparisons are current.</p>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-              <div className="app-surface p-5 sm:p-6 xl:col-span-2">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">
-                      Recent Applications
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Keep track of your latest opportunities.
-                    </p>
-                  </div>
-                  <label className="app-search-control flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
-                    <Search size={17} className="text-slate-400" />
-                    <input
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Search applications"
-                      className="w-full min-w-0 bg-transparent text-sm outline-none sm:w-40"
-                    />
-                  </label>
-                </div>
-
-                <div className="mt-5 space-y-3 sm:hidden">
-                  {displayedApplications.map((application) => (
-                    <article key={application.id} className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
-                      <div className="flex items-start gap-3">
-                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${application.color}`}>
-                          {application.initials}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-semibold text-slate-800">{application.company}</p>
-                          <p className="mt-1 text-xs text-slate-500">{application.position}</p>
-                        </div>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusStyles[application.status]}`}>
-                          {application.status}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-                        <span className="flex items-center gap-1"><MapPin size={12} />{application.location}</span>
-                        <span>{application.date}</span>
-                      </div>
-                    </article>
-                  ))}
-                  {displayedApplications.length === 0 && (
-                    <div className="app-empty-state !py-8 text-sm text-slate-500">No applications match your search.</div>
-                  )}
-                </div>
-
-                <div className="mt-6 hidden overflow-x-auto sm:block">
-                  <table className="w-full min-w-[600px] text-left">
-                    <thead>
-                      <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
-                        <th scope="col" className="pb-3 pr-4 font-semibold">Company / Role</th>
-                        <th scope="col" className="pb-3 pr-4 font-semibold">Date Applied</th>
-                        <th scope="col" className="pb-3 pr-4 font-semibold">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedApplications.map((application) => (
-                        <tr
-                          key={application.id}
-                          className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70"
-                        >
-                          <td className="py-4 pr-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${application.color}`}
-                              >
-                                {application.initials}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-slate-800">
-                                  {application.company}
-                                </p>
-                                <p className="mt-1 text-xs text-slate-500">
-                                  {application.position}
-                                </p>
-                                <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
-                                  <MapPin size={12} />
-                                  {application.location}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 pr-4 text-sm text-slate-500">
-                            {application.date}
-                          </td>
-                          <td className="py-4 pr-4">
-                            <span
-                              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[application.status]}`}
-                            >
-                              {application.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                      {displayedApplications.length === 0 && (
-                        <tr>
-                          <td
-                            colSpan={3}
-                            className="py-10 text-center text-sm text-slate-500"
-                          >
-                            No applications match your search.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <DashboardAction onClick={() => router.push("/applications")} className="mt-4">View all applications</DashboardAction>
-              </div>
-
-              <div className="space-y-6">
-                <div className="app-surface p-5 sm:p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900">
-                        Upcoming Interviews
-                      </h3>
-                      <p className="mt-1 text-sm text-slate-500">
-                        Stay ready for your next step.
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-purple-50 p-3 text-purple-600">
-                      <Clock3 size={20} />
-                    </div>
-                  </div>
-                  {upcomingInterviews.length === 0 ? (
-                    <div className="mt-6 rounded-xl border border-dashed border-slate-200 px-4 py-7 text-center">
-                      <CalendarDays
-                        size={28}
-                        className="mx-auto text-slate-300"
+            {/* The career track at full size: one stop per stage, with counts. */}
+            <ol className="mt-6 grid grid-cols-3 gap-y-6 sm:flex sm:items-start">
+              {TRACK_STAGES.map((stage, index) => {
+                const count = countFor(stage);
+                return (
+                  <Fragment key={stage}>
+                    {index > 0 && (
+                      <li aria-hidden="true" className="hidden h-0.5 flex-1 translate-y-[0.4375rem] bg-slate-200 sm:block" />
+                    )}
+                    <li className="flex flex-col items-center text-center sm:min-w-[5.5rem]">
+                      <span
+                        aria-hidden="true"
+                        className={`h-4 w-4 rounded-full border-2 ${
+                          count > 0
+                            ? stage === "Offer" ? "border-emerald-600 bg-emerald-600" : "border-cyan-600 bg-cyan-600"
+                            : "border-slate-300 bg-white"
+                        }`}
                       />
-                      <p className="mt-3 text-sm font-semibold text-slate-700">
-                        No upcoming interviews
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        Your scheduled interviews will appear here.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="mt-6 space-y-3">
-                      {upcomingInterviews.map((interview) => (
-                        <div
-                          key={interview.id}
-                          className="rounded-xl border border-slate-100 bg-slate-50/70 p-4"
-                        >
-                          <p className="font-semibold text-slate-800">
-                            {interview.position}
-                          </p>
-                          <p className="mt-1 text-sm text-slate-600">
-                            {interview.company}
-                          </p>
-                          <p className="mt-2 text-xs text-slate-500">
-                            {formatDashboardDate(interview.date)} · {interview.time} · {interview.type}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <DashboardAction onClick={() => router.push("/interviews")} className="mt-4">Manage interviews</DashboardAction>
-                </div>
+                      <Link
+                        href={`/applications?status=${encodeURIComponent(stage)}`}
+                        className="mt-2 rounded px-1 text-2xl font-semibold tabular-nums text-slate-900 hover:text-indigo-700"
+                        aria-label={`${count} ${count === 1 ? "application" : "applications"} at ${stage}`}
+                      >
+                        {isLoading ? "–" : count}
+                      </Link>
+                      <span className="text-[0.8125rem] text-slate-500">{stage}</span>
+                    </li>
+                  </Fragment>
+                );
+              })}
+            </ol>
+          </section>
+        )}
 
-                <div className="app-surface p-5 sm:p-6">
-                  <h3 className="text-lg font-bold text-slate-900">Application Pipeline</h3>
-                  <p className="mt-1 text-sm text-slate-500">Where your applications currently stand.</p>
-                  <div className="mt-5 space-y-4">
-                    {applicationPipeline.map(({ status, count, percentage }) => {
-                      return <div key={status}>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium text-slate-700">{status}</span>
-                          <span className="text-slate-500">{count}</span>
-                        </div>
-                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                          <div className="h-full rounded-full bg-blue-500" style={{ width: `${percentage}%` }} />
-                        </div>
-                      </div>;
-                    })}
-                  </div>
-                  <DashboardAction onClick={() => router.push("/applications")} className="mt-5">View application pipeline</DashboardAction>
-                </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <section aria-labelledby="recent-title" className="app-surface lg:col-span-2">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
+              <h2 id="recent-title" className="app-section-title">Recent applications</h2>
+              {applications.length > 0 && (
+                <Link href="/applications" className="app-button-text">View all</Link>
+              )}
+            </div>
 
-                <div className="rounded-2xl bg-gradient-to-br from-[#172B4D] to-[#264B80] p-6 text-white">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
-                    <GraduationCap size={23} />
-                  </div>
-                  <h3 className="mt-4 text-lg font-bold">Ready for your next step?</h3>
-                  <p className="mt-2 text-sm leading-6 text-blue-100">
-                    Keep your resume updated and highlight the skills that match your target roles.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/resumes")}
-                    className="app-button-inverse mt-5"
-                  >
-                    Review my resumes
-                  </button>
-                </div>
+            {recentApplications.length === 0 ? (
+              <div className="px-6 py-10 text-center">
+                <p className="font-medium text-slate-800">No applications yet</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {jobs.length > 0
+                    ? "Open a saved job and choose Track application once you apply."
+                    : "Add a job first, then track your application to it."}
+                </p>
+                {jobs.length > 0 && (
+                  <Link href="/jobs" className="app-button-secondary app-button-compact mt-4">Go to jobs</Link>
+                )}
               </div>
-            </section>
+            ) : (
+              <ul className="divide-y divide-slate-200">
+                {recentApplications.map((application) => (
+                  <li key={application.id} className="grid grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_12rem_6.5rem] sm:items-center sm:px-6">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-900">{application.position}</p>
+                      <p className="truncate text-sm text-slate-500">{application.company}</p>
+                    </div>
+                    <div className="flex items-center gap-3 sm:flex-col sm:items-start sm:gap-1.5">
+                      <StatusChip status={application.status} />
+                      <CareerTrack status={application.status} className="w-28 sm:w-full" />
+                    </div>
+                    <p className="text-sm text-slate-500 tabular-nums sm:text-right">
+                      {application.dateApplied ? formatDate(application.dateApplied) : "Not applied"}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
-            <footer className="border-t border-slate-200 py-5 text-center text-xs text-slate-400">
-              CareerTrack · Stay organized. Move forward.
-            </footer>
-          </div>
+          <section aria-labelledby="interviews-title" className="app-surface">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
+              <h2 id="interviews-title" className="app-section-title">Upcoming interviews</h2>
+              {interviews.length > 0 && <Link href="/interviews" className="app-button-text">View all</Link>}
+            </div>
+            {upcomingInterviews.length === 0 ? (
+              <div className="px-5 py-10 text-center">
+                <p className="font-medium text-slate-800">Nothing scheduled</p>
+                <p className="mt-1 text-sm text-slate-500">Scheduled interviews appear here with their date and time.</p>
+                <Link href="/interviews" className="app-button-secondary app-button-compact mt-4">Schedule an interview</Link>
+              </div>
+            ) : (
+              <ul className="divide-y divide-slate-200">
+                {upcomingInterviews.map((interview) => {
+                  const date = new Date(`${interview.date}T00:00:00`);
+                  return (
+                    <li key={interview.id} className="flex gap-4 px-5 py-4">
+                      <time
+                        dateTime={interview.date}
+                        className="flex w-12 shrink-0 flex-col items-center rounded-md border border-slate-200 py-1 leading-tight"
+                      >
+                        <span className="text-xs text-slate-500">{date.toLocaleDateString("en-US", { month: "short" })}</span>
+                        <span className="text-lg font-semibold text-slate-900">{date.getDate()}</span>
+                      </time>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-slate-900">{interview.position}</p>
+                        <p className="truncate text-sm text-slate-500">{interview.company}</p>
+                        <p className="mt-1 text-[0.8125rem] text-slate-500">{interview.time} · {interview.type}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        {jobs.length > 0 && (
+          <section aria-labelledby="matches-title" className="app-surface">
+            <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+              <h2 id="matches-title" className="app-section-title">Resume matches</h2>
+              <p className="mt-1 text-sm text-slate-500">How your resumes compare with your saved jobs.</p>
+            </div>
+            <div className="grid grid-cols-1 divide-y divide-slate-200 md:grid-cols-3 md:divide-x md:divide-y-0">
+              <div className="px-5 py-5 sm:px-6">
+                <h3 className="text-sm font-medium text-slate-500">Strongest current match</h3>
+                {strongestMatch ? (
+                  <>
+                    <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
+                      {strongestMatch.latestAnalysisScore}<span className="text-base font-normal text-slate-500">/100</span>
+                    </p>
+                    <p className="mt-1 truncate text-sm text-slate-700">{strongestMatch.position} at {strongestMatch.company}</p>
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-600">No current analysis yet.</p>
+                )}
+              </div>
+
+              <div className="px-5 py-5 sm:px-6 md:col-span-2">
+                <h3 className="text-sm font-medium text-slate-500">
+                  {outdatedAnalyses.length > 0 ? "Out of date" : "Coverage"}
+                </h3>
+                {outdatedAnalyses.length > 0 ? (
+                  <ul className="mt-2 space-y-2">
+                    {outdatedAnalyses.slice(0, 3).map((job) => (
+                      <li key={job.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                        <span className="min-w-0 text-sm text-slate-700">
+                          <span className="font-medium text-slate-900">{job.position}</span> at {job.company}
+                          <span className="text-slate-500"> · was {job.latestAnalysisScore}/100</span>
+                        </span>
+                        <Link href={`/jobs?analysis=${job.id}`} className="app-button-text">Re-run analysis</Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-600">
+                    {notAnalyzedCount > 0
+                      ? `${notAnalyzedCount} saved ${notAnalyzedCount === 1 ? "job has" : "jobs have"} not been analyzed. `
+                      : "Every analysis is current. "}
+                    {notAnalyzedCount > 0 && <Link href="/jobs" className="app-button-text">Choose a job</Link>}
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
     </WorkspaceLayout>
   );
 }
-function formatDashboardDate(date: string) {
-  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
+
+function formatDate(date: string) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
-}
-
-function InsightMetric({ label, value, style }: { label: string; value: number; style: string }) {
-  return (
-    <div className={`rounded-xl p-3 text-center ${style}`}>
-      <p className="text-2xl font-bold">{value}</p>
-      <p className="mt-1 text-xs font-medium">{label}</p>
-    </div>
-  );
-}
-
-function DashboardAction({
-  children,
-  onClick,
-  className = "",
-}: {
-  children: ReactNode;
-  onClick: () => void;
-  className?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`app-arrow-action inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1.5 pl-3 pr-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-px hover:border-indigo-200 hover:bg-indigo-50/70 hover:text-indigo-700 hover:shadow-md hover:shadow-indigo-100 ${className}`}
-    >
-      {children}
-      <span className="app-arrow-badge bg-indigo-50 text-indigo-600">
-        <ArrowRight size={14} aria-hidden="true" />
-      </span>
-    </button>
-  );
 }

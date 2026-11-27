@@ -17,13 +17,13 @@ import {
   updateApplication as updateApplicationRequest,
   type ApiApplication,
 } from "@/lib/api";
+import {
+  fromBackendStatus,
+  toBackendStatus,
+  type ApplicationStatus,
+} from "@/lib/applicationStatus";
 
-export type ApplicationStatus =
-  | "Applied"
-  | "In Review"
-  | "Interview"
-  | "Offer"
-  | "Rejected";
+export type { ApplicationStatus };
 
 export type Application = {
   id: string;
@@ -58,25 +58,6 @@ type ApplicationsContextValue = {
 const ApplicationsContext =
   createContext<ApplicationsContextValue | null>(null);
 
-const backendStatusByFrontendStatus: Record<ApplicationStatus, string> = {
-  Applied: "APPLIED",
-  "In Review": "ASSESSMENT",
-  Interview: "INTERVIEW",
-  Offer: "OFFER",
-  Rejected: "REJECTED",
-};
-
-const frontendStatusByBackendStatus: Record<string, ApplicationStatus> = {
-  SAVED: "Applied",
-  APPLIED: "Applied",
-  ASSESSMENT: "In Review",
-  INTERVIEW: "Interview",
-  FINAL_INTERVIEW: "Interview",
-  OFFER: "Offer",
-  REJECTED: "Rejected",
-  WITHDRAWN: "Rejected",
-};
-
 function mapApplication(
   application: ApiApplication,
   jobs: ReturnType<typeof useJobs>["jobs"],
@@ -92,7 +73,7 @@ function mapApplication(
     position: job?.position ?? "Unknown position",
     location: job?.location ?? "Not specified",
     dateApplied: application.date_applied ?? "",
-    status: frontendStatusByBackendStatus[application.status] ?? "Applied",
+    status: fromBackendStatus(application.status),
     notes: application.notes ?? "",
     resumeId: application.resume_id ?? "",
     resumeName: resume?.name ?? (application.resume_id ? "Deleted resume" : "No resume selected"),
@@ -102,7 +83,7 @@ function mapApplication(
 function toBackendApplication(input: ApplicationInput) {
   return {
     job_id: input.jobId,
-    status: backendStatusByFrontendStatus[input.status],
+    status: toBackendStatus(input.status),
     date_applied: input.dateApplied || null,
     notes: input.notes || null,
     resume_id: input.resumeId || null,

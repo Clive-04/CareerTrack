@@ -1,21 +1,12 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import Sidebar from "@/components/Sidebar";
-import TopNavbar from "@/components/TopNavbar";
+import { useEffect, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import Sidebar, { MobileHeader, MobileTabBar } from "@/components/Sidebar";
 import { useAuth } from "@/components/AuthProvider";
 
-type WorkspaceLayoutProps = {
-  children: ReactNode;
-};
-
-export default function WorkspaceLayout({
-  children,
-}: WorkspaceLayoutProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+export default function WorkspaceLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
   const { user, isLoading } = useAuth();
 
   useEffect(() => {
@@ -27,9 +18,9 @@ export default function WorkspaceLayout({
   if (isLoading || !user) {
     return (
       <div className="app-shell flex min-h-screen items-center justify-center p-6">
-        <div className="app-surface flex items-center gap-3 px-5 py-4">
+        <div role="status" className="app-loading-state">
           <span className="app-spinner" aria-hidden="true" />
-          <p className="text-sm font-medium text-slate-600">Checking your session...</p>
+          Checking your session…
         </div>
       </div>
     );
@@ -40,21 +31,18 @@ export default function WorkspaceLayout({
       <a href="#workspace-content" className="app-skip-link">
         Skip to main content
       </a>
-      <Sidebar
-        mobileMenuOpen={mobileMenuOpen}
-        setMobileMenuOpen={setMobileMenuOpen}
-      />
+      <Sidebar />
+      <MobileHeader />
 
-      <main id="workspace-content" tabIndex={-1} className="min-h-screen outline-none lg:ml-72">
-        <TopNavbar
-          mobileMenuOpen={mobileMenuOpen}
-          setMobileMenuOpen={setMobileMenuOpen}
-        />
-
-        <div key={pathname} className="app-page-enter">
-          {children}
-        </div>
+      <main
+        id="workspace-content"
+        tabIndex={-1}
+        className="min-h-screen pb-20 outline-none md:pb-0 md:pl-20 lg:pl-[14.5rem]"
+      >
+        {children}
       </main>
+
+      <MobileTabBar />
     </div>
   );
 }

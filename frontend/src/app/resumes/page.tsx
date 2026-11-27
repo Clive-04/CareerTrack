@@ -9,8 +9,6 @@ import {
   Download,
   Pencil,
   Trash2,
-  BriefcaseBusiness,
-  CalendarDays,
   Star,
   Upload,
   ChevronDown,
@@ -24,7 +22,7 @@ import { useSkills } from "@/components/SkillsProvider";
 import useDialogControls from "@/hooks/useDialogControls";
 import ExpandableText from "@/components/ExpandableText";
 import ExpandableSkillList from "@/components/ExpandableSkillList";
-import MetricCard from "@/components/MetricCard";
+import ActionMenu from "@/components/ActionMenu";
 
 const emptyForm = {
   name: "",
@@ -56,6 +54,7 @@ export default function ResumesPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState("");
   const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null);
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [skillSearch, setSkillSearch] = useState("");
@@ -140,6 +139,7 @@ export default function ResumesPage() {
       const resumeData = { name: form.name.trim(), targetRole: form.targetRole.trim(), fileName, file: selectedFile ?? undefined, skills: form.skills, notes: form.notes.trim() };
       if (editingId !== null) await updateResume(editingId, resumeData);
       else await createResume(resumeData);
+      setNotice(editingId !== null ? `Saved changes to ${resumeData.name}.` : `Uploaded ${resumeData.name}.`);
     } catch (requestError) {
       setMessage(requestError instanceof Error ? requestError.message : "Unable to save resume.");
       return;
@@ -155,7 +155,17 @@ export default function ResumesPage() {
     setMessage("");
   }
 
-  async function confirmDeleteResume() { if (!resumeToDelete) return; try { await deleteResume(resumeToDelete.id); setResumeToDelete(null); } catch (e) { setMessage(e instanceof Error ? e.message : "Unable to delete resume."); } }
+  async function confirmDeleteResume() {
+    if (!resumeToDelete) return;
+    try {
+      await deleteResume(resumeToDelete.id);
+      setNotice(`Deleted ${resumeToDelete.name}.`);
+      setResumeToDelete(null);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "The resume could not be deleted. Try again.");
+      setResumeToDelete(null);
+    }
+  }
 
   async function downloadResumeInfo(resume: Resume) {
     setMessage("");
@@ -172,243 +182,201 @@ export default function ResumesPage() {
     finally { setExtractingId(null); }
   }
 
-  const inputClass =
-    "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
+  const inputClass = "form-input";
+
+  const filtersActive = search !== "" || roleFilter !== "All";
 
   return (
     <WorkspaceLayout>
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
+      <div className="app-page space-y-6">
         <PageHeader
-          eyebrow="Your documents"
           title="Resumes"
-          description="Manage your resume versions for different job opportunities."
+          description={
+            defaultResume
+              ? `${resumes.length} ${resumes.length === 1 ? "version" : "versions"}. ${defaultResume.name} is your default.`
+              : "Keep a version for each kind of role you apply for."
+          }
           action={
-            <button
-              type="button"
-              onClick={openAddModal}
-              className="app-button-primary self-start"
-            >
-              <Plus size={18} />
-              Add Resume
+            <button type="button" onClick={openAddModal} className="app-button-primary">
+              <Plus size={18} aria-hidden="true" />
+              Upload resume
             </button>
           }
         />
+        {notice && (
+          <p role="status" className="app-notice-success justify-between">
+            {notice}
+            <button type="button" onClick={() => setNotice("")} aria-label="Dismiss message" className="app-icon-button-ghost -my-1 rounded p-1">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </p>
+        )}
         {message && !showModal && <p role="alert" className="app-notice-error">{message}</p>}
-        {isLoading && <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading resumes...</div>}
+        {isLoading && resumes.length === 0 && (
+          <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading resumes…</div>
+        )}
         {resumesError && <p role="alert" className="app-notice-error">{resumesError}</p>}
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <MetricCard label="Total Resumes" value={resumes.length} icon={FileText} tone="indigo" />
-          <MetricCard label="Target Roles" value={roles.length} icon={BriefcaseBusiness} tone="blue" />
-          <MetricCard label="Default Resume" value={defaultResume?.name ?? "Not set"} icon={Star} tone="amber" compactValue />
-        </section>
+        {!isLoading && resumes.length === 0 && !resumesError && (
+          <div className="app-empty-state">
+            <h2 className="app-section-title">No resumes yet</h2>
+            <p className="mx-auto mt-2 max-w-md text-[0.9375rem] text-slate-500">
+              Upload a text-based PDF or DOCX. CareerTrack reads its text so you can compare it with your saved jobs.
+            </p>
+            <button type="button" onClick={openAddModal} className="app-button-secondary mt-5">
+              <Upload size={17} aria-hidden="true" />Upload your first resume
+            </button>
+          </div>
+        )}
 
-        <section className="app-surface overflow-hidden">
-          <div className="flex flex-col gap-4 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="font-semibold text-gray-900">
-                Your Resume Library
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Keep different versions ready for different job roles.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <label className="app-search-control relative flex items-center rounded-xl border border-slate-200 bg-white">
-                <Search
-                  size={17}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
+        {resumes.length > 0 && (
+          <>
+            <section aria-label="Filter resumes" className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <label className="app-search-control flex flex-1 items-center gap-2 border px-3">
+                <Search size={17} className="text-slate-500" aria-hidden="true" />
                 <input
                   aria-label="Search resumes"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search resumes..."
-                  className="w-full rounded-xl bg-transparent py-2.5 pl-9 pr-3 text-sm outline-none sm:w-56"
+                  placeholder="Search name, role, file, or skill"
+                  className="h-11 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none"
                 />
               </label>
-
-              <select
-                aria-label="Filter resumes by target role"
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500"
-              >
-                <option value="All">All target roles</option>
-                {roles.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
-            {filteredResumes.length === 0 ? (
-              <div className="app-empty-state md:col-span-2 xl:col-span-3">
-                <FileText size={36} className="mx-auto text-gray-300" />
-                <p className="mt-3 font-medium text-gray-700">
-                  No resumes found
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  Try another search or add a resume.
-                </p>
-              </div>
-            ) : (
-              filteredResumes.map((resume) => (
-                <article
-                  key={resume.id}
-                  className="resume-library-card app-data-card flex flex-col"
+              {roles.length > 1 && (
+                <select
+                  aria-label="Target role"
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="form-input sm:w-52"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3.5">
-                      <div className="resume-card-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-indigo-100 bg-indigo-50 text-indigo-600">
-                        <FileText size={23} />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="truncate font-semibold text-slate-950">
-                          {resume.name}
-                        </h3>
-                        <p className="mt-0.5 truncate text-sm text-slate-500">
-                          {resume.targetRole}
+                  <option value="All">All target roles</option>
+                  {roles.map((role) => <option key={role} value={role}>{role}</option>)}
+                </select>
+              )}
+            </section>
+
+            <div className="app-filter-summary !mt-0">
+              <p aria-live="polite">
+                Showing <span className="font-semibold text-slate-800">{filteredResumes.length}</span> of {resumes.length} resumes
+              </p>
+              {filtersActive && (
+                <button type="button" onClick={() => { setSearch(""); setRoleFilter("All"); }} className="app-button-text">Clear filters</button>
+              )}
+            </div>
+
+            {filteredResumes.length === 0 ? (
+              <div className="app-empty-state"><p className="font-medium text-slate-800">No resumes match these filters</p></div>
+            ) : (
+              <ul className="app-surface divide-y divide-slate-200">
+                {filteredResumes.map((resume) => (
+                  <li key={resume.id}>
+                    <article aria-labelledby={`resume-${resume.id}-title`} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:p-6">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 id={`resume-${resume.id}-title`} className="text-[1.0625rem] font-semibold text-slate-900">{resume.name}</h2>
+                          {resume.isDefault && (
+                            <span className="app-chip app-chip-active"><Star size={12} aria-hidden="true" />Default</span>
+                          )}
+                        </div>
+                        <p className="text-[0.9375rem] text-slate-700">For {resume.targetRole}</p>
+                        <p className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
+                          <span className="inline-flex min-w-0 items-center gap-1.5">
+                            <FileText size={15} aria-hidden="true" />
+                            <span className="truncate">{resume.fileName}{!resume.hasFile && " (no file uploaded)"}</span>
+                          </span>
+                          <span>Updated {formatDate(resume.updatedAt)}</span>
                         </p>
-                      </div>
-                    </div>
 
-                    {resume.isDefault && (
-                      <span className="flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-                        <Star size={13} />
-                        Default
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-5 flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
-                    <FileText size={16} className="shrink-0 text-slate-400" />
-                    <span className="truncate text-xs font-medium text-slate-600">
-                      {resume.fileName}{!resume.hasFile && " (file not uploaded)"}
-                    </span>
-                  </div>
-
-                  {resume.hasFile && (
-                    <div className="mt-3 text-sm" aria-live="polite">
-                      {resume.extractionStatus === "ready" ? (
-                        <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-                          Text extracted — ready for analysis
-                        </p>
-                      ) : (
-                        <>
-                          <p className="text-amber-700">
-                            {resume.extractionStatus === "unavailable"
-                              ? "No readable text could be extracted. The file may be scanned, password-protected, damaged, or too complex. Upload a text-based PDF or DOCX through Edit."
-                              : "This file has not been checked for readable text yet."}
+                        {resume.hasFile && resume.extractionStatus !== "ready" && (
+                          <div className="app-notice-warning mt-3 flex-col !gap-1" aria-live="polite">
+                            <p>
+                              {resume.extractionStatus === "unavailable"
+                                ? "No readable text was found, so this resume can’t be analyzed. The file may be scanned, password-protected, or damaged. Upload a text-based PDF or DOCX instead."
+                                : "This file hasn’t been read yet. Extract its text before analyzing it."}
+                            </p>
+                            <button type="button" disabled={extractingId !== null} onClick={() => handleExtract(resume.id)} className="app-button-text self-start !text-amber-800">
+                              {extractingId === resume.id ? "Extracting…" : resume.extractionStatus === "unavailable" ? "Try again" : "Extract text"}
+                            </button>
+                          </div>
+                        )}
+                        {resume.hasFile && resume.extractionStatus === "ready" && (
+                          <p className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-emerald-700">
+                            <Check size={15} aria-hidden="true" />Ready for analysis
                           </p>
-                          <button type="button" disabled={extractingId !== null} onClick={() => handleExtract(resume.id)} className="app-button-text mt-2 disabled:opacity-50">
-                            {extractingId === resume.id ? "Extracting..." : resume.extractionStatus === "unavailable" ? "Retry extraction" : "Extract text"}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
+                        )}
 
-                  <div className="mt-4">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Skills
-                    </p>
-                    <ExpandableSkillList skills={resume.skills} />
-                  </div>
+                        {resume.skills.length > 0 && (
+                          <div className="mt-3">
+                            <h3 className="sr-only">Skills</h3>
+                            <ExpandableSkillList skills={resume.skills} />
+                          </div>
+                        )}
+                        {resume.notes && (
+                          <div className="mt-3 max-w-[72ch] text-sm text-slate-600"><ExpandableText text={resume.notes} /></div>
+                        )}
+                      </div>
 
-                  {resume.notes && (
-                    <ExpandableText text={resume.notes} className="mt-4 text-sm leading-6 text-slate-500" />
-                  )}
-
-                  <div className="resume-card-date flex items-center gap-1.5 text-xs text-gray-400">
-                    <CalendarDays size={14} />
-                    Updated {formatDate(resume.updatedAt)}
-                  </div>
-
-                  <div className="resume-card-actions-simple app-card-actions">
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(resume)}
-                      className="app-button-secondary flex-1"
-                    >
-                      <Pencil size={15} />
-                      Edit
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => downloadResumeInfo(resume)}
-                      disabled={!resume.hasFile}
-                      title={resume.hasFile ? "Download resume" : "Edit this resume to upload its file"}
-                      aria-label={`Download ${resume.name}`}
-                      className="app-icon-button"
-                    >
-                      <Download size={17} />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setAsDefault(resume.id)}
-                      disabled={resume.isDefault}
-                      title="Set as default resume"
-                      aria-label={`Set ${resume.name} as default`}
-                      className="app-icon-button !text-amber-600 hover:!bg-amber-50 disabled:opacity-40"
-                    >
-                      <Star size={17} />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setResumeToDelete(resume)}
-                      title="Delete resume"
-                      aria-label={`Delete ${resume.name}`}
-                      className="app-icon-button hover:!border-red-200 hover:!bg-red-50 hover:!text-red-600"
-                    >
-                      <Trash2 size={17} />
-                    </button>
-                  </div>
-                </article>
-              ))
+                      <div className="flex shrink-0 items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => downloadResumeInfo(resume)}
+                          disabled={!resume.hasFile}
+                          className="app-button-secondary app-button-compact"
+                        >
+                          <Download size={16} aria-hidden="true" />
+                          Download<span className="sr-only"> {resume.name}</span>
+                        </button>
+                        <ActionMenu
+                          label={`More actions for ${resume.name}`}
+                          items={[
+                            {
+                              label: "Make default",
+                              icon: Star,
+                              disabled: resume.isDefault,
+                              onSelect: async () => {
+                                try {
+                                  await setAsDefault(resume.id);
+                                  setNotice(`${resume.name} is now your default resume.`);
+                                } catch (error) {
+                                  setMessage(error instanceof Error ? error.message : "The default resume could not be changed.");
+                                }
+                              },
+                            },
+                            { label: "Edit details", icon: Pencil, onSelect: () => openEditModal(resume) },
+                            "separator",
+                            { label: "Delete resume", icon: Trash2, tone: "danger", onSelect: () => setResumeToDelete(resume) },
+                          ]}
+                        />
+                      </div>
+                    </article>
+                  </li>
+                ))}
+              </ul>
             )}
-          </div>
-
-          <div className="app-results-footer flex flex-wrap items-center justify-between gap-3">
-            <span>Showing {filteredResumes.length} of {resumes.length} resumes</span>
-            {(search || roleFilter !== "All") && (
-              <button type="button" onClick={() => { setSearch(""); setRoleFilter("All"); }} className="app-button-text">
-                Clear filters
-              </button>
-            )}
-          </div>
-        </section>
+          </>
+        )}
       </div>
 
       {showModal && (
         <div className="app-modal-backdrop app-modal-backdrop-scroll">
-          <div role="dialog" aria-modal="true" aria-labelledby="resume-form-title" className="app-modal-panel my-auto max-w-2xl">
-            <div className={`flex items-center justify-between border-b px-6 py-5 ${editingId !== null ? "border-amber-200 bg-amber-50/70" : "border-indigo-200 bg-indigo-50/70"}`}>
+          <div role="dialog" aria-modal="true" aria-labelledby="resume-form-title" className="app-modal-panel app-modal-sheet my-auto max-w-2xl">
+            <div className="app-modal-header">
               <div>
-                <h2 id="resume-form-title" className={`text-lg font-bold ${editingId !== null ? "text-amber-950" : "text-indigo-950"}`}>
-                  {editingId !== null ? "Edit Resume" : "Add Resume"}
+                <h2 id="resume-form-title" className="text-xl font-semibold">
+                  {editingId !== null ? "Edit resume" : "Upload resume"}
                 </h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Add a resume version to your library.
+                <p className="mt-1 text-sm text-slate-500">
+                  {editingId !== null ? "Update details, or replace the file." : "Add a resume version to your library."}
                 </p>
               </div>
-
               <button
                 type="button"
                 disabled={saving}
                 onClick={() => setShowModal(false)}
-                aria-label="Close form"
-                className="app-icon-button app-icon-button-ghost shrink-0"
+                aria-label="Close"
+                className="app-icon-button app-icon-button-ghost"
               >
-                <X size={20} />
+                <X size={20} aria-hidden="true" />
               </button>
             </div>
 
@@ -419,10 +387,13 @@ export default function ResumesPage() {
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">
-                    Resume Name *
+                  <label htmlFor="resume-name" className="app-field-label">
+                    Name<span className="font-normal text-slate-500"> (required)</span>
                   </label>
                   <input
+                    id="resume-name"
+                    data-autofocus
+                    aria-invalid={message !== "" && !form.name.trim()}
                     required
                     value={form.name}
                     onChange={(e) =>
@@ -434,10 +405,12 @@ export default function ResumesPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">
-                    Target Role *
+                  <label htmlFor="resume-role" className="app-field-label">
+                    Target role<span className="font-normal text-slate-500"> (required)</span>
                   </label>
                   <input
+                    id="resume-role"
+                    aria-invalid={message !== "" && !form.targetRole.trim()}
                     required
                     value={form.targetRole}
                     onChange={(e) =>
@@ -449,29 +422,31 @@ export default function ResumesPage() {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="mb-1.5 block text-sm font-medium">
-                    Resume File {editingId === null ? "*" : ""}
-                  </label>
+                  <span id="resume-file-label" className="app-field-label">
+                    File{editingId === null ? <span className="font-normal text-slate-500"> (required)</span> : null}
+                  </span>
 
-                  <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-blue-400 hover:bg-blue-50/40">
-                    <Upload size={28} className="text-blue-500" />
-                    <span className="mt-2 text-sm font-medium text-gray-700">
+                  <label className="flex cursor-pointer flex-col items-center justify-center rounded-[var(--radius-card)] border border-dashed border-slate-300 p-6 text-center transition-colors hover:border-indigo-400 hover:bg-indigo-50/50 focus-within:border-cyan-600 focus-within:ring-[3px] focus-within:ring-cyan-600/25">
+                    <Upload size={24} className="text-indigo-600" aria-hidden="true" />
+                    <span className="mt-2 text-sm font-medium text-slate-800">
                       {selectedFile
                         ? selectedFile.name
                         : editingId !== null
                           ? "Choose a replacement file (optional)"
                           : "Choose a PDF or DOCX file"}
                     </span>
-                    <span className="mt-1 text-xs text-gray-400">
+                    <span className="mt-1 text-[0.8125rem] text-slate-500">
                       {selectedFile
                         ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`
-                        : "Select a file from your computer"}
+                        : "Browse your files"}
                     </span>
 
                     <input
                       type="file"
+                      aria-labelledby="resume-file-label"
+                      aria-describedby="resume-file-help"
                       accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                      className="hidden"
+                      className="sr-only"
                       required={editingId === null}
                       onChange={(e) => {
                         const file = e.target.files?.[0] ?? null;
@@ -489,15 +464,13 @@ export default function ResumesPage() {
                     />
                   </label>
 
-                  <p className="mt-2 text-xs text-gray-400">
-                    PDF or DOCX, up to 10 MB. Your file stays private. Text is extracted locally; scanned documents need a text-based replacement.
+                  <p id="resume-file-help" className="app-field-hint">
+                    PDF or DOCX, up to 10 MB, stored privately. Scanned documents can’t be read; use a text-based file.
                   </p>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="mb-1.5 block text-sm font-medium">
-                    Skills
-                  </label>
+                  <span id="resume-skills-label" className="app-field-label">Skills</span>
                   {skillsLoading ? (
                     <p className="text-sm text-gray-500">Loading your skills...</p>
                   ) : availableSkills.length === 0 ? (
@@ -509,24 +482,26 @@ export default function ResumesPage() {
                       <button
                         type="button"
                         onClick={() => setSkillsOpen((open) => !open)}
-                        className="flex min-h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white py-2 pl-3 pr-2 text-left text-sm text-slate-700 shadow-sm outline-none transition hover:border-indigo-300 hover:shadow-md focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                        aria-expanded={skillsOpen}
+                        aria-labelledby="resume-skills-label"
+                        className="form-input flex min-h-11 items-center justify-between !py-1.5 !pr-1.5 text-left"
                       >
                         <span className="flex min-w-0 flex-wrap gap-2">
                           {form.skills.length > 0 ? (
                             form.skills.map((skill) => (
-                              <span key={skill} className="break-words rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                              <span key={skill} className="break-words rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[0.8125rem] text-slate-700">
                                 {skill}
                               </span>
                             ))
-                          ) : "Select skills"}
+                          ) : <span className="text-slate-500">Choose skills</span>}
                         </span>
-                        <span className="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                        <span aria-hidden="true" className="ml-3 flex h-8 w-8 shrink-0 items-center justify-center text-slate-500">
                           {skillsOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
                         </span>
                       </button>
 
                       {skillsOpen && (
-                        <div className="absolute z-10 mt-2 w-full rounded-xl border border-indigo-100 bg-white p-2 shadow-xl shadow-slate-200/70">
+                        <div className="absolute z-10 mt-1 w-full rounded-[var(--radius-card)] border border-slate-200 bg-white p-2 shadow-[var(--shadow-raised)]">
                           <div className="relative">
                             <Search
                               size={16}
@@ -534,10 +509,11 @@ export default function ResumesPage() {
                             />
                             <input
                               autoFocus
+                              aria-label="Search skills"
                               value={skillSearch}
                               onChange={(event) => setSkillSearch(event.target.value)}
-                              placeholder="Search skills..."
-                              className="w-full rounded-md border border-gray-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-indigo-500"
+                              placeholder="Search skills"
+                              className="form-input !pl-9"
                             />
                           </div>
 
@@ -552,6 +528,7 @@ export default function ResumesPage() {
                                   <button
                                     key={skill.id}
                                     type="button"
+                                    aria-pressed={selected}
                                     onClick={() =>
                                       setForm({
                                         ...form,
@@ -577,10 +554,9 @@ export default function ResumesPage() {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="mb-1.5 block text-sm font-medium">
-                    Notes
-                  </label>
+                  <label htmlFor="resume-notes" className="app-field-label">Notes</label>
                   <textarea
+                    id="resume-notes"
                     rows={3}
                     value={form.notes}
                     onChange={(e) =>
@@ -592,11 +568,7 @@ export default function ResumesPage() {
                 </div>
               </div>
 
-              {message && (
-                <p role="alert" className="text-sm text-red-600">
-                  {message}
-                </p>
-              )}
+              {message && <p role="alert" className="app-notice-error">{message}</p>}
 
               <div className="app-modal-footer">
                 <button
@@ -611,9 +583,11 @@ export default function ResumesPage() {
                 <button
                   type="submit"
                   disabled={saving}
+                  aria-busy={saving}
                   className="app-button-primary"
                 >
-                  {saving ? "Saving and reading resume..." : editingId !== null ? "Save Changes" : "Add Resume"}
+                  {saving && <span className="app-spinner !border-white/30 !border-t-white" aria-hidden="true" />}
+                  {saving ? "Uploading and reading…" : editingId !== null ? "Save changes" : "Upload resume"}
                 </button>
               </div>
             </form>
@@ -623,12 +597,13 @@ export default function ResumesPage() {
 
       {resumeToDelete && (
         <div className="app-modal-backdrop !z-[80]">
-          <div role="alertdialog" aria-modal="true" aria-labelledby="delete-resume-title" aria-describedby="delete-resume-description" className="app-modal-panel max-w-md p-6 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600"><Trash2 size={22} /></div>
-            <h2 id="delete-resume-title" className="mx-auto mt-4 w-fit rounded-lg bg-red-50 px-3 py-2 text-lg font-bold text-red-800">Delete resume?</h2>
-            <p id="delete-resume-description" className="mt-2 text-sm text-gray-500">Delete &quot;{resumeToDelete.name}&quot; from your resume library?</p>
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
-              <button type="button" onClick={() => setResumeToDelete(null)} className="app-button-secondary">Cancel</button>
+          <div role="alertdialog" aria-modal="true" aria-labelledby="delete-resume-title" aria-describedby="delete-resume-description" className="app-modal-panel max-w-md p-6">
+            <h2 id="delete-resume-title" className="text-lg font-semibold text-slate-900">Delete this resume?</h2>
+            <p id="delete-resume-description" className="mt-2 text-[0.9375rem] leading-6 text-slate-600">
+              “{resumeToDelete.name}” and its uploaded file will be permanently deleted. Applications that used it will show no resume. Past analyses keep their results. This can’t be undone.
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" data-autofocus onClick={() => setResumeToDelete(null)} className="app-button-secondary">Cancel</button>
               <button type="button" onClick={confirmDeleteResume} className="app-button-danger">Delete resume</button>
             </div>
           </div>

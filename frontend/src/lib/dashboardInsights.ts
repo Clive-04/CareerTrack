@@ -1,13 +1,8 @@
-import type { Application, ApplicationStatus } from "@/components/ApplicationsProvider";
+import type { Application } from "@/components/ApplicationsProvider";
 import type { Job } from "@/components/JobsProvider";
+import { APPLICATION_STATUSES } from "@/lib/applicationStatus";
 
-export const PIPELINE_STATUSES: ApplicationStatus[] = [
-  "Applied",
-  "In Review",
-  "Interview",
-  "Offer",
-  "Rejected",
-];
+export const PIPELINE_STATUSES = APPLICATION_STATUSES;
 
 export function getAiDashboardInsights(jobs: Job[]) {
   const analyzedJobs = jobs.filter((job) => job.latestAnalysisScore !== null);
