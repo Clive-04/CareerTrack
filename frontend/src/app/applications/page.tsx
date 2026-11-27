@@ -1,19 +1,10 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
-import {
-  Search,
-  Plus,
-  FileText,
-  Building2,
-  MapPin,
-  CalendarDays,
-  X,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import {
   useApplications,
   type Application,
@@ -21,10 +12,13 @@ import {
 } from "@/components/ApplicationsProvider";
 import { useJobs } from "@/components/JobsProvider";
 import { useResumes } from "@/components/ResumesProvider";
+import { useInterviews } from "@/components/InterviewsProvider";
 import OutdatedAnalysisWarning from "@/components/OutdatedAnalysisWarning";
 import ExpandableText from "@/components/ExpandableText";
-import MetricCard from "@/components/MetricCard";
+import ActionMenu from "@/components/ActionMenu";
+import { CareerTrack, StatusChip } from "@/components/CareerTrack";
 import useDialogControls from "@/hooks/useDialogControls";
+import { APPLICATION_STATUSES, isActiveStatus } from "@/lib/applicationStatus";
 
 type ApplicationForm = {
   jobId: string;
@@ -34,21 +28,7 @@ type ApplicationForm = {
   resumeId: string;
 };
 
-const statuses: ApplicationStatus[] = [
-  "Applied",
-  "In Review",
-  "Interview",
-  "Offer",
-  "Rejected",
-];
-
-const statusStyles: Record<ApplicationStatus, string> = {
-  Applied: "bg-blue-50 text-blue-700",
-  "In Review": "bg-amber-50 text-amber-700",
-  Interview: "bg-purple-50 text-purple-700",
-  Offer: "bg-green-50 text-green-700",
-  Rejected: "bg-red-50 text-red-700",
-};
+const ALL = "All statuses";
 
 const emptyForm: ApplicationForm = {
   jobId: "",
@@ -60,11 +40,17 @@ const emptyForm: ApplicationForm = {
 
 function getLocalDate() {
   const today = new Date();
-  const year = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const day = String(today.getDate()).padStart(2, "0");
+  return `${today.getFullYear()}-${month}-${day}`;
+}
 
-  return `${year}-${month}-${day}`;
+function formatDate(date: string) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 export default function ApplicationsPage() {
@@ -78,61 +64,86 @@ export default function ApplicationsPage() {
   } = useApplications();
   const { jobs, isLoading: jobsLoading } = useJobs();
   const { resumes, isLoading: resumesLoading } = useResumes();
+  const { interviews } = useInterviews();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All statuses");
+  const [statusFilter, setStatusFilter] = useState<string>(ALL);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [rowError, setRowError] = useState("");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ApplicationForm>(emptyForm);
-  const [applicationToDelete, setApplicationToDelete] =
-    useState<Application | null>(null);
-  const prefillHandled = useRef(false);
+  const [applicationToDelete, setApplicationToDelete] = useState<Application | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  const urlHandled = useRef(false);
 
-  useDialogControls(showForm, closeForm);
+  useDialogControls(showForm && !saving, closeForm);
   useDialogControls(applicationToDelete !== null, () => setApplicationToDelete(null));
 
-  /* The URL-driven modal must be ready before the destination page is painted. */
+  /*
+   * Deep links, applied before paint:
+   *   ?job=<id>[&resume=<id>]  opens a new application for that job
+   *   ?status=<Status>         filters the list
+   *   ?q=<text>                pre-fills the search
+   */
   /* eslint-disable react-hooks/set-state-in-effect */
   useLayoutEffect(() => {
-    if (prefillHandled.current || jobsLoading || resumesLoading) return;
+    if (urlHandled.current || jobsLoading || resumesLoading) return;
+    urlHandled.current = true;
 
     const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
+    if (status && (APPLICATION_STATUSES as readonly string[]).includes(status)) {
+      setStatusFilter(status);
+    }
+    const query = params.get("q");
+    if (query) setSearch(query.slice(0, 200));
+
     const jobId = params.get("job") ?? "";
     const resumeId = params.get("resume") ?? "";
-    if (!jobs.some((job) => job.id === jobId)) return;
-
-    prefillHandled.current = true;
-    setEditingId(null);
-    setForm({
-      ...emptyForm,
-      jobId,
-      resumeId: resumes.some((resume) => resume.id === resumeId) ? resumeId : "",
-      dateApplied: getLocalDate(),
-    });
-    setError("");
-    setShowForm(true);
-    window.history.replaceState(null, "", "/applications");
+    if (jobs.some((job) => job.id === jobId)) {
+      setEditingId(null);
+      setForm({
+        ...emptyForm,
+        jobId,
+        resumeId: resumes.some((resume) => resume.id === resumeId)
+          ? resumeId
+          : resumes.find((resume) => resume.isDefault)?.id ?? "",
+        dateApplied: getLocalDate(),
+      });
+      setError("");
+      setShowForm(true);
+    }
+    if (params.size > 0) window.history.replaceState(null, "", "/applications");
   }, [jobs, jobsLoading, resumes, resumesLoading]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const filteredApplications = applications.filter((application) => {
-    const matchesSearch =
-      `${application.company} ${application.position} ${application.location}`
+  const filteredApplications = applications
+    .filter((application) => {
+      const matchesSearch = `${application.company} ${application.position} ${application.location}`
         .toLowerCase()
         .includes(search.toLowerCase());
+      const matchesStatus = statusFilter === ALL || application.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => b.dateApplied.localeCompare(a.dateApplied) || b.id.localeCompare(a.id));
 
-    const matchesStatus =
-      statusFilter === "All statuses" ||
-      application.status === statusFilter;
+  const filtersActive = search !== "" || statusFilter !== ALL;
+  const activeCount = applications.filter((application) => isActiveStatus(application.status)).length;
 
-    return matchesSearch && matchesStatus;
-  });
+  function clearFilters() {
+    setSearch("");
+    setStatusFilter(ALL);
+  }
 
   function openAddApplication() {
+    const trackedJobs = new Set(applications.map((application) => application.jobId));
     setEditingId(null);
     setForm({
       ...emptyForm,
-      jobId: jobs[0]?.id ?? "",
+      jobId: jobs.find((job) => !trackedJobs.has(job.id))?.id ?? jobs[0]?.id ?? "",
       dateApplied: getLocalDate(),
       resumeId: resumes.find((resume) => resume.isDefault)?.id ?? "",
     });
@@ -164,526 +175,324 @@ export default function ApplicationsPage() {
     event.preventDefault();
 
     if (!form.jobId) {
-      setError("Select a saved job first.");
+      setError("Choose the job you applied for.");
       return;
     }
 
-    if (!form.dateApplied) {
-      setError("Date applied is required.");
+    if (!form.dateApplied && form.status !== "Saved") {
+      setError("Enter the date you applied, or set the status to Saved.");
       return;
     }
 
-    const applicationData: ApplicationForm = {
-      jobId: form.jobId,
-      dateApplied: form.dateApplied,
-      status: form.status,
-      notes: form.notes.trim(),
-      resumeId: form.resumeId,
-    };
+    const applicationData: ApplicationForm = { ...form, notes: form.notes.trim() };
 
+    setSaving(true);
     try {
       if (editingId !== null) {
         await updateApplication(editingId, applicationData);
+        setNotice("Application updated.");
       } else {
         await createApplication(applicationData);
+        setNotice("Application tracked.");
       }
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to save this application.",
-      );
+      setError(requestError instanceof Error ? requestError.message : "The application could not be saved. Try again.");
       return;
+    } finally {
+      setSaving(false);
     }
 
-    setSearch("");
-    setStatusFilter("All statuses");
+    clearFilters();
     closeForm();
   }
 
-  function handleDeleteApplication(id: string) {
-    const application = applications.find((item) => item.id === id);
-
-    if (!application) return;
-
-    setApplicationToDelete(application);
+  async function changeStatus(application: Application, status: ApplicationStatus) {
+    setRowError("");
+    setUpdatingId(application.id);
+    try {
+      await updateApplication(application.id, {
+        jobId: application.jobId,
+        dateApplied: application.dateApplied || (status === "Saved" ? "" : getLocalDate()),
+        status,
+        notes: application.notes,
+        resumeId: application.resumeId,
+      });
+      setNotice(`${application.position} moved to ${status}.`);
+    } catch (requestError) {
+      setRowError(requestError instanceof Error ? requestError.message : "The status could not be changed. Try again.");
+    } finally {
+      setUpdatingId(null);
+    }
   }
 
   async function confirmDeleteApplication() {
     if (!applicationToDelete) return;
-
+    setDeleteError("");
     try {
       await deleteApplication(applicationToDelete.id);
+      setNotice(`Deleted the application for ${applicationToDelete.position}.`);
       setApplicationToDelete(null);
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to delete this application.",
-      );
+      setDeleteError(requestError instanceof Error ? requestError.message : "The application could not be deleted. Try again.");
     }
   }
 
-  const offerCount = applications.filter(
-    (application) => application.status === "Offer",
-  ).length;
-
-  const interviewCount = applications.filter(
-    (application) => application.status === "Interview",
-  ).length;
-
-  const activeCount = applications.filter(
-    (application) =>
-      application.status !== "Rejected" &&
-      application.status !== "Offer",
-  ).length;
   const selectedJob = jobs.find((job) => job.id === form.jobId);
+  const deleteInterviewCount = applicationToDelete
+    ? interviews.filter((interview) => interview.applicationId === applicationToDelete.id).length
+    : 0;
 
   return (
     <WorkspaceLayout>
-      <div className="mx-auto max-w-7xl space-y-7 p-4 sm:p-8">
+      <div className="app-page space-y-6">
         <PageHeader
-          eyebrow="Your job search"
           title="Applications"
-          description="Track your progress from application to offer."
+          description={
+            applications.length > 0
+              ? `${activeCount} active of ${applications.length}. Update the status as each stage happens.`
+              : "Jobs you’ve applied for, and where each one stands."
+          }
           action={
-            <button
-              type="button"
-              onClick={openAddApplication}
-              className="app-button-primary self-start"
-            >
-              <Plus size={18} />
-              Add Application
+            <button type="button" onClick={openAddApplication} disabled={jobs.length === 0} className="app-button-primary">
+              <Plus size={18} aria-hidden="true" />
+              Track application
             </button>
           }
         />
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            label="Total Applications"
-            value={applications.length}
-            icon={FileText}
-            tone="indigo"
-          />
-
-          <MetricCard
-            label="Active Applications"
-            value={activeCount}
-            icon={Building2}
-            tone="blue"
-          />
-
-          <MetricCard
-            label="Interviews"
-            value={interviewCount}
-            icon={CalendarDays}
-            tone="violet"
-          />
-
-          <MetricCard
-            label="Offers Received"
-            value={offerCount}
-            icon={FileText}
-            tone="emerald"
-          />
-        </section>
-
-        {(applicationsLoading || jobsLoading) && (
-          <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading your applications...</div>
-        )}
-
-        {applicationsError && (
-          <p role="alert" className="app-notice-error">
-            {applicationsError}
+        {notice && (
+          <p role="status" className="app-notice-success justify-between">
+            {notice}
+            <button type="button" onClick={() => setNotice("")} aria-label="Dismiss message" className="app-icon-button-ghost -my-1 rounded p-1">
+              <X size={16} aria-hidden="true" />
+            </button>
           </p>
         )}
+        {applicationsError && <p role="alert" className="app-notice-error">{applicationsError}</p>}
+        {rowError && <p role="alert" className="app-notice-error">{rowError}</p>}
 
-        <section className="app-surface p-4 sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <label className="app-search-control flex flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3 py-3">
-              <Search size={18} className="shrink-0 text-slate-400" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search company, role, or location..."
-                aria-label="Search applications"
-                className="w-full min-w-0 bg-transparent text-sm outline-none"
-              />
-            </label>
-
-            <select
-              aria-label="Filter by application status"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-indigo-500"
-            >
-              <option value="All statuses">All statuses</option>
-              {statuses.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
+        {applicationsLoading && applications.length === 0 && (
+          <div role="status" className="app-loading-state">
+            <span className="app-spinner" aria-hidden="true" />Loading your applications…
           </div>
+        )}
 
-          <div className="app-filter-summary">
-            <p>
-              Showing <span className="font-semibold text-slate-700">{filteredApplications.length}</span>{" "}
-              of {applications.length} applications
+        {!applicationsLoading && applications.length === 0 && !applicationsError && (
+          <div className="app-empty-state">
+            <h2 className="app-section-title">No applications yet</h2>
+            <p className="mx-auto mt-2 max-w-md text-[0.9375rem] text-slate-500">
+              {jobs.length === 0
+                ? "Applications are tracked against a saved job. Add the job first."
+                : "When you apply for one of your saved jobs, track it here to follow each stage."}
             </p>
-            {(search || statusFilter !== "All statuses") && (
-              <button
-                type="button"
-                onClick={() => { setSearch(""); setStatusFilter("All statuses"); }}
-                className="app-button-text"
-              >
-                Clear filters
+            {jobs.length === 0 ? (
+              <Link href="/jobs?new=1" className="app-button-secondary mt-5">Add a job</Link>
+            ) : (
+              <button type="button" onClick={openAddApplication} className="app-button-secondary mt-5">
+                <Plus size={17} aria-hidden="true" />Track your first application
               </button>
             )}
           </div>
-        </section>
+        )}
 
-        <section className="app-surface overflow-hidden">
-          <div className="border-b border-slate-100 p-5 sm:px-6">
-            <h2 className="text-lg font-bold text-slate-900">
-              Application History
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-                Manage each application and its current status in one place.
-            </p>
-          </div>
+        {applications.length > 0 && (
+          <>
+            <section aria-label="Filter applications" className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <label className="app-search-control flex flex-1 items-center gap-2 border px-3">
+                <Search size={17} className="text-slate-500" aria-hidden="true" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search company, role, or location"
+                  aria-label="Search applications"
+                  className="h-11 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none"
+                />
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                aria-label="Status"
+                className="form-input sm:w-48"
+              >
+                <option value={ALL}>{ALL}</option>
+                {APPLICATION_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+            </section>
 
-          <div className="space-y-3 p-4 md:hidden">
-            {filteredApplications.map((application) => (
-              <article key={application.id} className="app-data-card">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-                    <Building2 size={20} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate font-semibold text-slate-900">{application.company}</h3>
-                    <p className="mt-1 text-sm text-slate-600">{application.position}</p>
-                    <p className="mt-2 flex items-center gap-1 text-xs text-slate-400">
-                      <MapPin size={13} /> {application.location}
-                    </p>
-                  </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[application.status]}`}>
-                    {application.status}
-                  </span>
-                </div>
+            <div className="app-filter-summary !mt-0">
+              <p aria-live="polite">
+                Showing <span className="font-semibold text-slate-800">{filteredApplications.length}</span> of {applications.length} applications
+              </p>
+              {filtersActive && <button type="button" onClick={clearFilters} className="app-button-text">Clear filters</button>}
+            </div>
 
-                <dl className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-xs">
-                  <div>
-                    <dt className="text-slate-400">Date applied</dt>
-                    <dd className="mt-1 font-semibold text-slate-700">
-                      {new Date(`${application.dateApplied}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-slate-400">Resume</dt>
-                    <dd className="mt-1 truncate font-semibold text-slate-700">{application.resumeName}</dd>
-                  </div>
-                </dl>
-
-                {application.notes && (
-                  <ExpandableText text={application.notes} className="mt-3 text-sm leading-6 text-slate-500" />
-                )}
-
-                <div className="app-card-actions">
-                  <button type="button" onClick={() => openEditApplication(application)} className="app-button-secondary flex-1">
-                    <Pencil size={15} /> Edit
-                  </button>
-                  <button type="button" onClick={() => handleDeleteApplication(application.id)} className="app-button-danger-outline flex-1">
-                    <Trash2 size={15} /> Delete
-                  </button>
-                </div>
-              </article>
-            ))}
-
-            {filteredApplications.length === 0 && (
+            {filteredApplications.length === 0 ? (
               <div className="app-empty-state">
-                <FileText size={32} className="mx-auto text-slate-300" />
-                <h3 className="mt-4 font-semibold text-slate-800">No applications found</h3>
-                <p className="mt-2 text-sm text-slate-500">Adjust your search or filters to see other applications.</p>
+                <p className="font-medium text-slate-800">No applications match these filters</p>
+                <button type="button" onClick={clearFilters} className="app-button-secondary app-button-compact mt-4">Clear filters</button>
               </div>
-            )}
-          </div>
-
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[900px] text-left">
-              <thead className="bg-slate-50">
-                <tr className="text-xs uppercase tracking-wider text-slate-500">
-                  <th scope="col" className="px-6 py-4 font-semibold">
-                    Company / Position
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-center font-semibold">
-                    Date Applied
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-center font-semibold">
-                    Status
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-center font-semibold">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
+            ) : (
+              <ul className="app-surface divide-y divide-slate-200">
                 {filteredApplications.map((application) => (
-                  <tr
-                    key={application.id}
-                    className="border-t border-slate-100 transition hover:bg-slate-50/70"
-                  >
-                    <td className="px-6 py-5">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-                          <Building2 size={20} />
-                        </div>
-
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            {application.company}
-                          </p>
-                          <p className="mt-1 text-sm text-slate-600">
-                            {application.position}
-                          </p>
-                          <p className="mt-2 flex items-center gap-1 text-xs text-slate-400">
-                            <MapPin size={13} />
-                            {application.location}
-                          </p>
-                          <p className="mt-2 text-xs text-slate-500">
-                            Resume: {application.resumeName}
-                          </p>
-
-                          {application.notes && (
-                            <ExpandableText text={application.notes} className="mt-2 max-w-xs text-xs leading-5 text-slate-500" />
-                          )}
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="whitespace-nowrap px-6 py-5 text-center text-sm text-slate-500">
-                      {new Date(
-                        `${application.dateApplied}T12:00:00`,
-                      ).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </td>
-
-                    <td className="px-6 py-5 text-center">
-                      <span
-                        className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${statusStyles[application.status]}`}
-                      >
-                        {application.status}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-5 text-center">
-                      <div className="flex items-center justify-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => openEditApplication(application)}
-                          aria-label={`Edit application for ${application.position} at ${application.company}`}
-                          className="app-button-secondary app-button-compact w-24"
-                        >
-                          <Pencil size={15} />
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleDeleteApplication(application.id)
-                          }
-                          aria-label={`Delete application for ${application.position} at ${application.company}`}
-                          className="app-button-danger-outline app-button-compact w-24"
-                        >
-                          <Trash2 size={15} />
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-                {filteredApplications.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="px-6 py-14 text-center text-sm text-slate-500"
+                  <li key={application.id}>
+                    <article
+                      aria-labelledby={`application-${application.id}-title`}
+                      className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:p-6 xl:grid-cols-[minmax(0,1fr)_13rem_auto] xl:items-start"
                     >
-                      No applications found. Try another search or filter.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                      <div className="min-w-0">
+                        <h2 id={`application-${application.id}-title`} className="text-[1.0625rem] font-semibold text-slate-900">
+                          {application.position}
+                        </h2>
+                        <p className="text-[0.9375rem] text-slate-700">{application.company}</p>
+                        <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-500">
+                          <div className="flex gap-1">
+                            <dt>Applied</dt>
+                            <dd className="tabular-nums">{application.dateApplied ? formatDate(application.dateApplied) : "not yet"}</dd>
+                          </div>
+                          <div className="flex gap-1"><dt>Resume</dt><dd>{application.resumeId ? application.resumeName : "none"}</dd></div>
+                          <div className="flex gap-1"><dt className="sr-only">Location</dt><dd>{application.location}</dd></div>
+                        </dl>
+                        {application.notes && (
+                          <div className="mt-3 max-w-[72ch] text-sm text-slate-600">
+                            <ExpandableText text={application.notes} />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col gap-2 sm:col-start-1 sm:row-start-2 xl:col-start-auto xl:row-start-auto">
+                        <StatusChip status={application.status} />
+                        <CareerTrack status={application.status} className="w-full max-w-52" />
+                      </div>
+
+                      <div className="flex items-center gap-2 sm:col-start-2 sm:row-start-1 sm:self-start xl:col-start-auto xl:row-start-auto">
+                        <label className="sr-only" htmlFor={`status-${application.id}`}>
+                          Status for {application.position} at {application.company}
+                        </label>
+                        <select
+                          id={`status-${application.id}`}
+                          value={application.status}
+                          disabled={updatingId === application.id}
+                          onChange={(event) => changeStatus(application, event.target.value as ApplicationStatus)}
+                          className="form-input !min-h-9 !py-1.5 text-sm sm:w-44"
+                        >
+                          {APPLICATION_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+                        </select>
+                        <ActionMenu
+                          label={`More actions for ${application.position} at ${application.company}`}
+                          items={[
+                            { label: "Edit application", icon: Pencil, onSelect: () => openEditApplication(application) },
+                            "separator",
+                            {
+                              label: "Delete application",
+                              icon: Trash2,
+                              tone: "danger",
+                              onSelect: () => { setDeleteError(""); setApplicationToDelete(application); },
+                            },
+                          ]}
+                        />
+                      </div>
+                    </article>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
       </div>
 
       {showForm && (
         <div className="app-modal-backdrop app-modal-backdrop-scroll">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="application-form-title"
-            className="app-modal-panel my-auto max-w-xl"
-          >
-            <div className={`flex items-start justify-between gap-4 border-b px-6 py-5 ${editingId !== null ? "border-amber-200 bg-amber-50/70" : "border-indigo-200 bg-indigo-50/70"}`}>
+          <div role="dialog" aria-modal="true" aria-labelledby="application-form-title" className="app-modal-panel app-modal-sheet my-auto max-w-xl">
+            <div className="app-modal-header">
               <div>
-                <h2
-                  id="application-form-title"
-                  className={`text-xl font-bold ${editingId !== null ? "text-amber-950" : "text-indigo-950"}`}
-                >
-                  {editingId !== null
-                    ? "Edit Application"
-                    : "Add Application"}
+                <h2 id="application-form-title" className="text-xl font-semibold">
+                  {editingId !== null ? "Edit application" : "Track application"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  {editingId !== null
-                    ? "Update the details of your application."
-                    : "Record a job you have applied for."}
+                  {editingId !== null ? "Update this application’s details." : "Record an application for one of your saved jobs."}
                 </p>
               </div>
-
-              <button
-                type="button"
-                aria-label="Close form"
-                onClick={closeForm}
-                className="app-icon-button app-icon-button-ghost shrink-0"
-              >
-                <X size={20} />
+              <button type="button" aria-label="Close" onClick={closeForm} disabled={saving} className="app-icon-button app-icon-button-ghost">
+                <X size={20} aria-hidden="true" />
               </button>
             </div>
 
-            <form
-              noValidate
-              onSubmit={handleSaveApplication}
-              className="space-y-4 p-6"
-            >
+            <form noValidate onSubmit={handleSaveApplication} className="space-y-5 p-6">
+              <FormField label="Job" required>
+                <select
+                  required
+                  data-autofocus
+                  disabled={editingId !== null}
+                  value={form.jobId}
+                  onChange={(event) => setForm({ ...form, jobId: event.target.value })}
+                  aria-invalid={error !== "" && !form.jobId}
+                  className="form-input"
+                >
+                  <option value="">{jobs.length === 0 ? "No saved jobs yet" : "Choose a saved job"}</option>
+                  {jobs.map((job) => (
+                    <option key={job.id} value={job.id}>{job.position} at {job.company}</option>
+                  ))}
+                </select>
+              </FormField>
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField label="Saved Job *">
+                <FormField label="Status">
                   <select
-                    required
-                    disabled={editingId !== null}
-                    value={form.jobId}
-                    onChange={(event) =>
-                      setForm({ ...form, jobId: event.target.value })
-                    }
+                    value={form.status}
+                    onChange={(event) => setForm({ ...form, status: event.target.value as ApplicationStatus })}
                     className="form-input"
                   >
-                    <option value="">
-                      {jobs.length === 0
-                        ? "No saved jobs available"
-                        : "Select a saved job"}
-                    </option>
-                    {jobs.map((job) => (
-                      <option key={job.id} value={job.id}>
-                        {job.company} — {job.position}
-                      </option>
-                    ))}
+                    {APPLICATION_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
                   </select>
                 </FormField>
-
-                <FormField label="Date Applied *">
+                <FormField label="Date applied" required={form.status !== "Saved"}>
                   <input
                     type="date"
-                    required
                     value={form.dateApplied}
-                    onChange={(event) =>
-                      setForm({ ...form, dateApplied: event.target.value })
-                    }
+                    onChange={(event) => setForm({ ...form, dateApplied: event.target.value })}
+                    aria-invalid={error !== "" && !form.dateApplied && form.status !== "Saved"}
                     className="form-input"
                   />
                 </FormField>
-
-                <FormField label="Application Status">
-                  <select
-                    value={form.status}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        status: event.target.value as ApplicationStatus,
-                      })
-                    }
-                    className="form-input"
-                  >
-                    {statuses.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
-
-                <FormField label="Resume used (optional)">
-                  <select
-                    value={form.resumeId}
-                    onChange={(event) =>
-                      setForm({ ...form, resumeId: event.target.value })
-                    }
-                    className="form-input"
-                  >
-                    <option value="">No resume selected</option>
-                    {resumes.map((resume) => (
-                      <option key={resume.id} value={resume.id}>
-                        {resume.name}{resume.isDefault ? " (Default)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
               </div>
+
+              <FormField label="Resume used">
+                <select
+                  value={form.resumeId}
+                  onChange={(event) => setForm({ ...form, resumeId: event.target.value })}
+                  className="form-input"
+                >
+                  <option value="">None</option>
+                  {resumes.map((resume) => (
+                    <option key={resume.id} value={resume.id}>{resume.name}{resume.isDefault ? " (default)" : ""}</option>
+                  ))}
+                </select>
+              </FormField>
 
               {selectedJob?.latestAnalysisIsStale && (
                 <OutdatedAnalysisWarning
                   reasons={selectedJob.latestAnalysisStaleReasons}
-                  message="For the most accurate comparison, analyze the current job and resume again. You can still save this application if you have reviewed them yourself."
+                  message="The resume match for this job is out of date. You can still save the application."
                 />
               )}
 
-              <FormField label="Notes (optional)">
+              <FormField label="Notes">
                 <textarea
-                  rows={3}
+                  rows={4}
                   value={form.notes}
-                  onChange={(event) =>
-                    setForm({ ...form, notes: event.target.value })
-                  }
-                  placeholder="Recruiter details, follow-up reminders, or other notes..."
+                  onChange={(event) => setForm({ ...form, notes: event.target.value })}
+                  placeholder="Recruiter contact, follow-up dates, anything worth remembering"
                   className="form-input resize-y"
                 />
               </FormField>
 
-              {error && (
-                <p role="alert" className="text-sm font-medium text-red-600">
-                  {error}
-                </p>
-              )}
+              {error && <p role="alert" className="app-notice-error">{error}</p>}
 
-              {jobs.length === 0 && (
-                <p className="text-sm text-slate-500">
-                  Add a job before creating an application.
-                </p>
-              )}
-
-              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={closeForm}
-                  className="app-button-secondary"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="app-button-primary"
-                >
-                  {editingId !== null
-                    ? "Save Changes"
-                    : "Save Application"}
+              <div className="app-modal-footer">
+                <button type="button" onClick={closeForm} disabled={saving} className="app-button-secondary">Cancel</button>
+                <button type="submit" disabled={saving || jobs.length === 0} aria-busy={saving} className="app-button-primary">
+                  {saving && <span className="app-spinner !border-white/30 !border-t-white" aria-hidden="true" />}
+                  {editingId !== null ? "Save changes" : "Track application"}
                 </button>
               </div>
             </form>
@@ -696,75 +505,49 @@ export default function ApplicationsPage() {
           <div
             role="alertdialog"
             aria-modal="true"
-            aria-labelledby="delete-application-dialog-title"
-            aria-describedby="delete-application-dialog-description"
-            className="app-modal-panel max-w-sm p-6 text-center"
+            aria-labelledby="delete-application-title"
+            aria-describedby="delete-application-description"
+            className="app-modal-panel max-w-md p-6"
           >
-            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
-              <Trash2 size={21} />
+            <h2 id="delete-application-title" className="text-lg font-semibold text-slate-900">Delete this application?</h2>
+            <div id="delete-application-description" className="mt-2 space-y-2 text-[0.9375rem] leading-6 text-slate-600">
+              <p>
+                Your application for {applicationToDelete.position} at {applicationToDelete.company} will be permanently deleted. The saved job stays.
+              </p>
+              {deleteInterviewCount > 0 && (
+                <p className="font-medium text-red-700">
+                  {deleteInterviewCount} interview{deleteInterviewCount === 1 ? "" : "s"} for this application will also be deleted.
+                </p>
+              )}
+              <p>This can’t be undone.</p>
             </div>
-
-            <h2
-              id="delete-application-dialog-title"
-              className="mx-auto mt-5 w-fit rounded-lg bg-red-50 px-3 py-2 text-lg font-bold text-red-800"
-            >
-              Delete this application?
-            </h2>
-            <p id="delete-application-dialog-description" className="mt-2 text-sm leading-6 text-slate-500">
-              Are you sure you want to delete your application for{" "}
-              {applicationToDelete.position} at {applicationToDelete.company}?
-            </p>
-
-            <div className="mt-6 flex flex-col-reverse justify-center gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => setApplicationToDelete(null)}
-                className="app-button-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteApplication}
-                className="app-button-danger"
-              >
-                Delete application
-              </button>
+            {deleteError && <p role="alert" className="app-notice-error mt-4">{deleteError}</p>}
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" data-autofocus onClick={() => setApplicationToDelete(null)} className="app-button-secondary">Cancel</button>
+              <button type="button" onClick={confirmDeleteApplication} className="app-button-danger">Delete application</button>
             </div>
           </div>
         </div>
       )}
-
-      <style jsx global>{`
-        .form-input {
-          width: 100%;
-          border: 1px solid #e2e8f0;
-          border-radius: 0.75rem;
-          padding: 0.7rem 0.85rem;
-          font-size: 0.875rem;
-          outline: none;
-          background-color: white;
-        }
-
-        .form-input:focus {
-          border-color: #4f46e5;
-          box-shadow: 0 0 0 3px rgb(79 70 229 / 12%);
-        }
-      `}</style>
     </WorkspaceLayout>
   );
 }
 
 function FormField({
   label,
+  required = false,
   children,
 }: {
   label: string;
+  required?: boolean;
   children: ReactNode;
 }) {
   return (
-    <label className="block space-y-2 text-sm font-medium text-slate-700">
-      {label}
+    <label className="block">
+      <span className="app-field-label">
+        {label}
+        {required ? <span className="font-normal text-slate-500"> (required)</span> : null}
+      </span>
       {children}
     </label>
   );

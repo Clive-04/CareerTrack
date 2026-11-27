@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeft,
-  BriefcaseBusiness,
   Check,
   CheckCircle2,
   Circle,
@@ -15,6 +14,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import BrandLogo from "@/components/BrandLogo";
 import {
   validateLogin,
   validateRegistration,
@@ -90,35 +90,31 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
   if (isLoading || user) return <AuthenticationLoader />;
 
   return (
-    <main className="relative flex min-h-screen items-start justify-center overflow-x-hidden bg-[linear-gradient(135deg,#eef2ff_0%,#f8fafc_48%,#ecfeff_100%)] p-4 sm:items-center sm:p-8">
-      <AuthBackground />
+    <main className="grid min-h-screen bg-[var(--paper)] lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <AuthBrandPanel />
 
-      <section className="relative w-full max-w-md rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_28px_80px_rgb(30_41_59/16%)] backdrop-blur-xl sm:p-8">
-        <div className={isRegistering ? "auth-mode-enter-forward" : "auth-mode-enter-back"}>
+      <section className="flex items-start justify-center px-4 py-8 sm:items-center sm:px-8">
+        <div className="w-full max-w-md">
           <Link
             href="/"
-            className="mb-6 inline-flex items-center gap-2 rounded-lg px-1 py-1 text-sm font-semibold text-slate-500 transition hover:text-indigo-600"
+            className="mb-8 inline-flex min-h-10 items-center gap-2 rounded text-sm font-medium text-slate-600 hover:text-indigo-700"
           >
-            <ArrowLeft size={16} />
-            Back to home
+            <ArrowLeft size={16} aria-hidden="true" />
+            CareerTrack home
           </Link>
 
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#172B4D] text-white">
-              <BriefcaseBusiness size={22} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-indigo-600">CareerTrack</p>
-              <h1 className="text-xl font-bold text-slate-900">
-                {isRegistering ? "Create your account" : "Welcome back"}
-              </h1>
-            </div>
+          <div className="flex items-center gap-3 lg:hidden">
+            <BrandLogo className="h-9 w-9" priority />
+            <span className="text-lg font-semibold text-slate-900">CareerTrack</span>
           </div>
 
-          <p className="mt-6 text-sm leading-6 text-slate-500">
+          <h1 className="font-display mt-6 text-[2rem] leading-tight text-slate-900 lg:mt-0">
+            {isRegistering ? "Create your account" : "Sign in"}
+          </h1>
+          <p className="mt-2 text-[0.9375rem] leading-6 text-slate-600">
             {isRegistering
-              ? "Create your private workspace to start organizing your career progress."
-              : "Sign in to continue managing your job search."}
+              ? "Your jobs, applications, and resumes stay private to your account."
+              : "Pick up your job search where you left off."}
           </p>
 
           <form noValidate onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -175,8 +171,8 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
             </Field>
 
             {isRegistering && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3" aria-label="Password requirements">
-                <p className="text-xs font-semibold text-slate-600">Password requirements</p>
+              <div className="rounded-[var(--radius-control)] border border-slate-200 bg-white p-3">
+                <p className="text-[0.8125rem] font-semibold text-slate-700">Your password needs</p>
                 <div className="mt-2 space-y-1.5">
                   <Requirement met={passwordIsLongEnough} label="At least 12 characters" />
                   <Requirement met={passwordHasUppercase} label="One uppercase letter" />
@@ -234,8 +230,8 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
             )}
 
             {error && (
-              <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
-                <AlertCircle size={17} className="mt-0.5 shrink-0" />
+              <div role="alert" className="app-notice-error">
+                <AlertCircle size={17} className="mt-0.5 shrink-0" aria-hidden="true" />
                 <span>{error}</span>
               </div>
             )}
@@ -243,74 +239,57 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
             <button
               type="submit"
               disabled={isSubmitting}
+              aria-busy={isSubmitting}
               className="app-button-primary w-full"
             >
-              {isSubmitting && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />}
-              {isSubmitting ? "Please wait..." : isRegistering ? "Create account" : "Sign in"}
+              {isSubmitting && <span className="app-spinner !border-white/30 !border-t-white" aria-hidden="true" />}
+              {isSubmitting
+                ? isRegistering ? "Creating account…" : "Signing in…"
+                : isRegistering ? "Create account" : "Sign in"}
             </button>
           </form>
 
-          <p className="mt-5 text-center text-sm text-slate-500">
-            {isRegistering ? "Already have an account?" : "Need an account?"}{" "}
+          <p className="mt-6 text-sm text-slate-600">
+            {isRegistering ? "Already have an account?" : "New to CareerTrack?"}{" "}
             <Link
               href={isRegistering ? "/login" : "/register"}
-              className="font-semibold text-indigo-600 transition hover:text-indigo-800"
+              className="app-button-text"
             >
-              {isRegistering ? "Sign in" : "Create one"}
+              {isRegistering ? "Sign in" : "Create an account"}
             </Link>
           </p>
         </div>
       </section>
-
-      <style jsx global>{`
-        .auth-input {
-          width: 100%;
-          border: 1px solid #e2e8f0;
-          border-radius: 0.75rem;
-          padding: 0.7rem 0.85rem;
-          font-size: 0.875rem;
-          outline: none;
-          transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
-        }
-        .auth-input:focus {
-          border-color: #6366f1;
-          box-shadow: 0 0 0 3px rgb(99 102 241 / 12%);
-        }
-        @keyframes auth-mode-forward {
-          from { opacity: 0; transform: translateX(18px) scale(0.99); }
-          to { opacity: 1; transform: translateX(0) scale(1); }
-        }
-        @keyframes auth-mode-back {
-          from { opacity: 0; transform: translateX(-18px) scale(0.99); }
-          to { opacity: 1; transform: translateX(0) scale(1); }
-        }
-        .auth-mode-enter-forward { animation: auth-mode-forward 550ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-        .auth-mode-enter-back { animation: auth-mode-back 550ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-        @media (prefers-reduced-motion: reduce) {
-          .auth-mode-enter-forward, .auth-mode-enter-back { animation: none; }
-        }
-      `}</style>
     </main>
   );
 }
 
-function AuthBackground() {
+/** Large screens only: the brand and the career track, in the app's ink. */
+function AuthBrandPanel() {
   return (
-    <>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-[0.32]"
-        style={{
-          backgroundImage: "linear-gradient(rgb(99 102 241 / 10%) 1px, transparent 1px), linear-gradient(90deg, rgb(99 102 241 / 10%) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-          maskImage: "linear-gradient(to bottom, black, transparent 82%)",
-        }}
-      />
-      <div aria-hidden="true" className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-indigo-300/35 blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -bottom-40 -right-28 h-[28rem] w-[28rem] rounded-full bg-cyan-300/30 blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute right-[12%] top-[18%] h-28 w-28 rotate-12 rounded-[2rem] border border-white/60 bg-white/25 shadow-xl backdrop-blur-sm" />
-      <div aria-hidden="true" className="pointer-events-none absolute bottom-[16%] left-[10%] h-20 w-20 -rotate-12 rounded-3xl border border-indigo-200/50 bg-indigo-100/25 shadow-lg backdrop-blur-sm" />
-    </>
+    <aside aria-hidden="true" className="hidden flex-col justify-between bg-[var(--ink)] p-12 text-white lg:flex">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-md bg-white">
+          <BrandLogo className="h-9 w-9" priority />
+        </span>
+        <span className="text-lg font-semibold">CareerTrack</span>
+      </div>
+      <div className="max-w-sm">
+        <p className="font-display text-[1.75rem] leading-snug">Every application, from saved to signed.</p>
+        <div className="mt-8 flex items-center">
+          {["Saved", "Applied", "Interview", "Offer"].map((stage, index) => (
+            <div key={stage} className="flex flex-1 items-center last:flex-none">
+              <span className={`h-3.5 w-3.5 shrink-0 rounded-full border-2 ${index < 3 ? "border-[#2fa8bc] bg-[#2fa8bc]" : "border-[#6fc6d4] bg-transparent"}`} />
+              {index < 3 && <span className={`h-0.5 flex-1 ${index < 2 ? "bg-[#2fa8bc]" : "bg-white/25"}`} />}
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 flex justify-between text-[0.8125rem] text-[#c9c6dc]">
+          <span>Saved</span><span>Applied</span><span>Interview</span><span>Offer</span>
+        </div>
+      </div>
+      <p className="text-sm text-[#9f9bb8]">Your data stays private to your account.</p>
+    </aside>
   );
 }
 
@@ -361,9 +340,9 @@ function VisibilityButton({ shown, label, onClick }: { shown: boolean; label: st
 
 function Requirement({ met, label }: { met: boolean; label: string }) {
   return (
-    <div className={`flex items-center gap-2 text-xs ${met ? "text-emerald-700" : "text-slate-500"}`}>
-      {met ? <Check size={14} strokeWidth={3} /> : <Circle size={12} />}
-      <span>{label}</span>
+    <div className={`flex items-center gap-2 text-[0.8125rem] ${met ? "text-emerald-700" : "text-slate-600"}`}>
+      {met ? <Check size={14} strokeWidth={3} aria-hidden="true" /> : <Circle size={12} aria-hidden="true" />}
+      <span>{label}<span className="sr-only">{met ? " (done)" : " (not yet)"}</span></span>
     </div>
   );
 }
@@ -371,9 +350,9 @@ function Requirement({ met, label }: { met: boolean; label: string }) {
 function AuthenticationLoader() {
   return (
     <main className="app-shell flex min-h-screen items-center justify-center p-6">
-      <div className="app-surface flex items-center gap-3 px-5 py-4">
+      <div role="status" className="app-loading-state">
         <span className="app-spinner" aria-hidden="true" />
-        <p className="text-sm font-medium text-slate-600">Checking your session...</p>
+        Checking your session…
       </div>
     </main>
   );
@@ -381,8 +360,8 @@ function AuthenticationLoader() {
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
   return (
-    <div className="space-y-2 text-sm font-medium text-slate-700">
-      <label htmlFor={htmlFor} className="block">{label}</label>
+    <div className="space-y-1.5">
+      <label htmlFor={htmlFor} className="app-field-label !mb-0">{label}</label>
       {children}
     </div>
   );

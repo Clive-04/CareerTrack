@@ -1,168 +1,243 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
   BriefcaseBusiness,
-  ClipboardList,
   CalendarDays,
+  ClipboardList,
   FileText,
-  Brain,
-  X,
+  Gauge,
   LogOut,
-  Sparkles,
+  Menu,
+  Shapes,
+  X,
+  type LucideIcon,
 } from "lucide-react";
+import { useState } from "react";
+import ActionMenu from "@/components/ActionMenu";
 import { useAuth } from "@/components/AuthProvider";
 import BrandLogo from "@/components/BrandLogo";
+import useDialogControls from "@/hooks/useDialogControls";
 
-const navigationItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Saved Jobs", href: "/jobs", icon: BriefcaseBusiness },
-  { label: "Applications", href: "/applications", icon: ClipboardList },
-  { label: "Interviews", href: "/interviews", icon: CalendarDays },
-  { label: "Resumes", href: "/resumes", icon: FileText },
-  { label: "Skills", href: "/skills", icon: Brain },
+type NavItem = { label: string; href: string; icon: LucideIcon };
+
+export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Job search",
+    items: [
+      { label: "Overview", href: "/dashboard", icon: Gauge },
+      { label: "Jobs", href: "/jobs", icon: BriefcaseBusiness },
+      { label: "Applications", href: "/applications", icon: ClipboardList },
+      { label: "Interviews", href: "/interviews", icon: CalendarDays },
+    ],
+  },
+  {
+    label: "Materials",
+    items: [
+      { label: "Resumes", href: "/resumes", icon: FileText },
+      { label: "Skills", href: "/skills", icon: Shapes },
+    ],
+  },
 ];
 
-type SidebarProps = {
-  mobileMenuOpen: boolean;
-  setMobileMenuOpen: (open: boolean) => void;
-};
+const PRIMARY_TABS = NAV_GROUPS[0].items;
+const MORE_ITEMS = NAV_GROUPS[1].items;
 
-export default function Sidebar({
-  mobileMenuOpen,
-  setMobileMenuOpen,
-}: SidebarProps) {
+function useIsActive() {
   const pathname = usePathname();
+  return (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function Initials({ className = "" }: { className?: string }) {
+  const { user } = useAuth();
+  if (!user) return null;
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-[0.8125rem] font-semibold text-cyan-800 ${className}`}
+    >
+      {`${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase()}
+    </span>
+  );
+}
+
+function AccountMenu({ variant }: { variant: "sidebar" | "rail" | "header" }) {
   const { user, logout } = useAuth();
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  if (!user) return null;
+  const fullName = `${user.first_name} ${user.last_name}`;
 
-  useEffect(() => {
-    if (!mobileMenuOpen) return;
+  const buttonClassName = {
+    sidebar: "flex min-h-11 w-full items-center gap-3 rounded-md px-2 py-1.5 text-left text-sm text-white hover:bg-white/7",
+    rail: "flex h-11 w-11 items-center justify-center rounded-md hover:bg-white/7",
+    header: "flex h-11 w-11 items-center justify-center rounded-md hover:bg-slate-100",
+  }[variant];
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    closeButtonRef.current?.focus();
+  const menuClassName = {
+    sidebar: "bottom-full left-0 mb-2 w-[13rem]",
+    rail: "bottom-0 left-full ml-2",
+    header: "right-0 top-full mt-1",
+  }[variant];
 
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileMenuOpen(false);
-    };
+  return (
+    <ActionMenu
+      label={`Account: ${fullName}`}
+      buttonClassName={buttonClassName}
+      menuClassName={menuClassName}
+      buttonContent={
+        <>
+          <Initials />
+          {variant === "sidebar" && <span className="min-w-0 flex-1 truncate font-medium">{fullName}</span>}
+        </>
+      }
+      header={
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-slate-900">{fullName}</p>
+          <p className="truncate text-[0.8125rem] text-slate-500">{user.email}</p>
+        </div>
+      }
+      items={[{ label: "Log out", icon: LogOut, onSelect: logout }]}
+    />
+  );
+}
 
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("keydown", closeOnEscape);
-      document.body.style.overflow = previousOverflow;
-      document.querySelector<HTMLButtonElement>('[aria-label="Open navigation menu"]')?.focus();
-    };
-  }, [mobileMenuOpen, setMobileMenuOpen]);
-
+/** Desktop sidebar (lg+) and icon rail (md to lg). */
+export default function Sidebar() {
+  const isActive = useIsActive();
+  const { user } = useAuth();
   if (!user) return null;
 
-  const initials = `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase();
-  const isActive = (href: string) => pathname.startsWith(href);
-  const closeMobileMenu = () => setMobileMenuOpen(false);
+  return (
+    <aside
+      aria-label="Primary"
+      className="fixed inset-y-0 left-0 z-40 hidden w-20 flex-col bg-[var(--ink)] text-white md:flex lg:w-[14.5rem]"
+    >
+      <Link
+        href="/dashboard"
+        className="flex h-16 items-center justify-center gap-2.5 px-4 lg:justify-start lg:px-5"
+        aria-label="CareerTrack overview"
+      >
+        <span className="flex h-9 w-9 items-center justify-center rounded-md bg-white">
+          <BrandLogo className="h-8 w-8" priority />
+        </span>
+        <span className="hidden text-[1.0625rem] font-semibold lg:inline">CareerTrack</span>
+      </Link>
+
+      <nav aria-label="Workspace" className="flex-1 overflow-y-auto px-3 py-4 lg:px-4">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label} className="mb-6">
+            <p className="mb-1.5 hidden px-3 text-[0.8125rem] font-medium text-[#9f9bb8] lg:block">{group.label}</p>
+            <div className="hidden h-px bg-white/10 md:block lg:hidden" aria-hidden="true" />
+            <ul className="space-y-0.5 pt-1 lg:pt-0">
+              {group.items.map(({ label, href, icon: Icon }) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    aria-current={isActive(href) ? "page" : undefined}
+                    className="app-nav-link flex-col !gap-1 !px-1 text-center !text-[0.6875rem] lg:flex-row lg:!gap-3 lg:!px-3 lg:text-left lg:!text-[0.9375rem]"
+                  >
+                    <Icon size={19} strokeWidth={1.9} aria-hidden="true" />
+                    <span>{label}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </nav>
+
+      <div className="border-t border-white/10 p-3 lg:p-4">
+        <div className="hidden lg:block"><AccountMenu variant="sidebar" /></div>
+        <div className="flex justify-center lg:hidden"><AccountMenu variant="rail" /></div>
+      </div>
+    </aside>
+  );
+}
+
+/** Phone header (below md): brand and account menu. */
+export function MobileHeader() {
+  return (
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 md:hidden">
+      <Link href="/dashboard" className="flex items-center gap-2" aria-label="CareerTrack overview">
+        <BrandLogo className="h-7 w-7" />
+        <span className="text-base font-semibold text-slate-900">CareerTrack</span>
+      </Link>
+      <AccountMenu variant="header" />
+    </header>
+  );
+}
+
+/** Phone bottom tab bar (below md). Resumes and Skills live under More. */
+export function MobileTabBar() {
+  const isActive = useIsActive();
+  const [moreOpen, setMoreOpen] = useState(false);
+  useDialogControls(moreOpen, () => setMoreOpen(false));
+  const moreActive = MORE_ITEMS.some((item) => isActive(item.href));
 
   return (
     <>
-      {mobileMenuOpen && (
-        <button
-          type="button"
-          aria-label="Close navigation menu"
-          onClick={closeMobileMenu}
-          className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-sm lg:hidden"
-        />
-      )}
-
-      <aside
-        aria-label="Primary navigation"
-        className={`app-sidebar fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-hidden bg-[linear-gradient(165deg,#111827_0%,#111c36_52%,#0b1120_100%)] text-white shadow-2xl shadow-slate-950/15 ${mobileMenuOpen ? "app-sidebar-open" : ""}`}
+      <nav
+        aria-label="Workspace"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
       >
-        <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-indigo-500/15 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl" />
+        <ul className="flex">
+          {PRIMARY_TABS.map(({ label, href, icon: Icon }) => (
+            <li key={href} className="flex flex-1">
+              <Link href={href} aria-current={isActive(href) ? "page" : undefined} className="app-tabbar-link">
+                <Icon size={20} strokeWidth={1.9} aria-hidden="true" />
+                {label}
+              </Link>
+            </li>
+          ))}
+          <li className="flex flex-1">
+            <button
+              type="button"
+              onClick={() => setMoreOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={moreOpen}
+              aria-current={moreActive ? "page" : undefined}
+              className="app-tabbar-link"
+            >
+              <Menu size={20} strokeWidth={1.9} aria-hidden="true" />
+              More
+            </button>
+          </li>
+        </ul>
+      </nav>
 
-        <div className="relative flex h-20 items-center justify-between gap-3 border-b border-white/8 px-5">
-          <Link href="/dashboard" onClick={closeMobileMenu} className="group flex min-w-0 items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-lg shadow-indigo-950/25 transition-transform duration-300 group-hover:-rotate-3">
-              <BrandLogo className="h-10 w-10" priority />
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-lg font-bold tracking-[-0.025em]">CareerTrack</span>
-              <span className="block truncate text-[11px] font-medium tracking-wide text-slate-400">PRIVATE CAREER WORKSPACE</span>
-            </span>
-          </Link>
-
-          <button
-            ref={closeButtonRef}
-            type="button"
-            onClick={closeMobileMenu}
-            aria-label="Close navigation menu"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white/10 hover:text-white lg:hidden"
+      {moreOpen && (
+        <div className="app-modal-backdrop !items-end !p-0 md:hidden" onClick={() => setMoreOpen(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="more-menu-title"
+            onClick={(event) => event.stopPropagation()}
+            className="app-modal-panel !rounded-b-none pb-[env(safe-area-inset-bottom)]"
           >
-            <X size={19} />
-          </button>
-        </div>
-
-        <nav className="relative flex-1 overflow-y-auto px-4 py-6" aria-label="Workspace navigation">
-          <div className="mb-4 flex items-center justify-between px-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Workspace</p>
-            <Sparkles size={14} className="text-indigo-300" />
-          </div>
-
-          <div className="space-y-1.5">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.href);
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={closeMobileMenu}
-                  aria-current={active ? "page" : undefined}
-                  className={`app-sidebar-button group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${
-                    active
-                      ? "bg-white text-slate-950 shadow-lg shadow-black/10"
-                      : "text-slate-300 hover:bg-white/8 hover:text-white"
-                  }`}
-                >
-                  <span className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${
-                    active ? "bg-indigo-50 text-indigo-600" : "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white"
-                  }`}>
-                    <Icon size={18} strokeWidth={2.1} />
-                  </span>
-                  <span className="flex-1">{item.label}</span>
-                  {active && <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />}
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-
-        <div className="relative border-t border-white/8 p-4">
-          <div className="rounded-2xl border border-white/8 bg-white/[0.06] p-3 backdrop-blur">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400 to-cyan-500 text-sm font-bold shadow-md shadow-black/20">
-                {initials}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-white">{user.first_name} {user.last_name}</p>
-                <p className="mt-0.5 truncate text-xs text-slate-400">{user.email}</p>
-              </div>
-              <button
-                type="button"
-                aria-label="Log out"
-                title="Log out"
-                onClick={logout}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-red-500/15 hover:text-red-300"
-              >
-                <LogOut size={17} />
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <h2 id="more-menu-title" className="text-base font-semibold text-slate-900">More</h2>
+              <button type="button" onClick={() => setMoreOpen(false)} aria-label="Close" className="app-icon-button app-icon-button-ghost">
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
+            <ul className="p-2">
+              {MORE_ITEMS.map(({ label, href, icon: Icon }) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    onClick={() => setMoreOpen(false)}
+                    aria-current={isActive(href) ? "page" : undefined}
+                    className="app-menu-item aria-[current=page]:font-semibold aria-[current=page]:text-indigo-700"
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
-      </aside>
+      )}
     </>
   );
 }

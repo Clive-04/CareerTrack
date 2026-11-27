@@ -74,12 +74,10 @@ export default function JobDescription({ description }: { description: string })
   const blocks = descriptionParagraphs(visibleText);
 
   return (
-    <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50/70 p-4 sm:p-5">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-        Job description
-      </p>
+    <div className="border-l-2 border-slate-200 pl-4">
+      <p className="sr-only">Job description</p>
 
-      <div className="mt-3 space-y-3 text-sm leading-6 text-slate-600">
+      <div className="space-y-3 text-[0.9375rem] leading-7 text-slate-600">
         {blocks.map((block, index) => {
           const markdownHeading = block.match(/^#{1,3}\s+([\s\S]+)$/u);
           if (markdownHeading) {

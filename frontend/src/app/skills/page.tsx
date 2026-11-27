@@ -1,23 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  Award,
-  Plus,
-  Search,
-  X,
-  Pencil,
-  Trash2,
-  BriefcaseBusiness,
-  CheckCircle2,
-  Code2,
-  Database,
-  Wrench,
-  Users,
-  Layers,
-} from "lucide-react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
 import PageHeader from "@/components/PageHeader";
+import ActionMenu from "@/components/ActionMenu";
 import {
   useSkills,
   type Proficiency,
@@ -26,23 +13,9 @@ import {
 } from "@/components/SkillsProvider";
 import useDialogControls from "@/hooks/useDialogControls";
 import ExpandableText from "@/components/ExpandableText";
-import MetricCard from "@/components/MetricCard";
 
-const categories: SkillCategory[] = [
-  "Programming",
-  "Frameworks",
-  "Databases",
-  "Tools",
-  "Soft Skills",
-  "Other",
-];
-
-const proficiencyLevels: Proficiency[] = [
-  "Beginner",
-  "Intermediate",
-  "Advanced",
-  "Expert",
-];
+const categories: SkillCategory[] = ["Programming", "Frameworks", "Databases", "Tools", "Soft Skills", "Other"];
+const proficiencyLevels: Proficiency[] = ["Beginner", "Intermediate", "Advanced", "Expert"];
 
 const emptyForm = {
   name: "",
@@ -51,6 +24,20 @@ const emptyForm = {
   yearsExperience: "0",
   notes: "",
 };
+
+function ProficiencyMeter({ proficiency }: { proficiency: Proficiency }) {
+  const level = proficiencyLevels.indexOf(proficiency) + 1;
+  return (
+    <span className="inline-flex items-center gap-2 text-sm text-slate-700">
+      <span className="flex gap-0.5" aria-hidden="true">
+        {proficiencyLevels.map((_, index) => (
+          <span key={index} className={`h-2.5 w-4 rounded-[2px] ${index < level ? "bg-cyan-600" : "bg-slate-200"}`} />
+        ))}
+      </span>
+      {proficiency}
+    </span>
+  );
+}
 
 export default function SkillsPage() {
   const { skills, createSkill, updateSkill, deleteSkill: removeSkill, isLoading, error: skillsError } = useSkills();
@@ -61,41 +48,39 @@ export default function SkillsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
+  const [pageError, setPageError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [saving, setSaving] = useState(false);
   const [skillToDelete, setSkillToDelete] = useState<Skill | null>(null);
 
-  useDialogControls(showModal, () => setShowModal(false));
+  useDialogControls(showModal && !saving, () => setShowModal(false));
   useDialogControls(skillToDelete !== null, () => setSkillToDelete(null));
 
-  const filteredSkills = useMemo(() => {
-    return skills.filter((skill) => {
-      const searchText =
-        `${skill.name} ${skill.category} ${skill.notes}`.toLowerCase();
+  const filteredSkills = useMemo(
+    () =>
+      skills
+        .filter((skill) => {
+          const text = `${skill.name} ${skill.category} ${skill.notes}`.toLowerCase();
+          return (
+            text.includes(search.toLowerCase()) &&
+            (categoryFilter === "All" || skill.category === categoryFilter) &&
+            (proficiencyFilter === "All" || skill.proficiency === proficiencyFilter)
+          );
+        })
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [skills, search, categoryFilter, proficiencyFilter],
+  );
 
-      const matchesSearch = searchText.includes(search.toLowerCase());
-      const matchesCategory =
-        categoryFilter === "All" || skill.category === categoryFilter;
-      const matchesProficiency =
-        proficiencyFilter === "All" ||
-        skill.proficiency === proficiencyFilter;
+  const groups = categories
+    .map((category) => ({ category, items: filteredSkills.filter((skill) => skill.category === category) }))
+    .filter((group) => group.items.length > 0);
+  const filtersActive = search !== "" || categoryFilter !== "All" || proficiencyFilter !== "All";
 
-      return matchesSearch && matchesCategory && matchesProficiency;
-    });
-  }, [skills, search, categoryFilter, proficiencyFilter]);
-
-  const categoryCount = new Set(skills.map((skill) => skill.category)).size;
-
-  const advancedCount = skills.filter(
-    (skill) =>
-      skill.proficiency === "Advanced" || skill.proficiency === "Expert"
-  ).length;
-
-  const averageExperience =
-    skills.length > 0
-      ? (
-          skills.reduce((total, skill) => total + skill.yearsExperience, 0) /
-          skills.length
-        ).toFixed(1)
-      : "0.0";
+  function clearFilters() {
+    setSearch("");
+    setCategoryFilter("All");
+    setProficiencyFilter("All");
+  }
 
   function openAddModal() {
     setError("");
@@ -117,482 +102,271 @@ export default function SkillsPage() {
     setShowModal(true);
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     const name = form.name.trim();
 
     if (!name) {
-      setError("Skill name is required and cannot contain only spaces.");
+      setError("Enter a skill name.");
       return;
     }
 
+    // The database stores whole years, so fractional values are rejected rather than silently rounded.
     const years = Number(form.yearsExperience);
-
-    if (
-      !form.yearsExperience.trim() ||
-      !Number.isFinite(years) ||
-      years < 0 ||
-      years > 60
-    ) {
-      setError("Years of experience must be between 0 and 60.");
+    if (!form.yearsExperience.trim() || !Number.isInteger(years) || years < 0 || years > 60) {
+      setError("Enter whole years of experience from 0 to 60.");
       return;
     }
 
-    const skillData = {
-      name,
-      category: form.category,
-      proficiency: form.proficiency,
-      yearsExperience: years,
-      notes: form.notes.trim(),
-    };
+    const skillData = { name, category: form.category, proficiency: form.proficiency, yearsExperience: years, notes: form.notes.trim() };
 
+    setSaving(true);
     try {
       if (editingId !== null) await updateSkill(editingId, skillData);
       else await createSkill(skillData);
+      setNotice(editingId !== null ? `Saved changes to ${name}.` : `Added ${name}.`);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to save skill.");
+      setError(requestError instanceof Error ? requestError.message : "The skill could not be saved. Try again.");
       return;
+    } finally {
+      setSaving(false);
     }
 
-    setError("");
     setShowModal(false);
     setEditingId(null);
     setForm(emptyForm);
   }
 
-  async function confirmDeleteSkill() { if (!skillToDelete) return; try { await removeSkill(skillToDelete.id); setSkillToDelete(null); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to delete skill."); } }
-
-  const inputClass =
-    "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
-
-  function getCategoryIcon(category: SkillCategory) {
-    switch (category) {
-      case "Programming":
-        return Code2;
-      case "Frameworks":
-        return Layers;
-      case "Databases":
-        return Database;
-      case "Tools":
-        return Wrench;
-      case "Soft Skills":
-        return Users;
-      default:
-        return Award;
+  async function confirmDeleteSkill() {
+    if (!skillToDelete) return;
+    try {
+      await removeSkill(skillToDelete.id);
+      setNotice(`Deleted ${skillToDelete.name}.`);
+    } catch (requestError) {
+      setPageError(requestError instanceof Error ? requestError.message : "The skill could not be deleted. Try again.");
     }
-  }
-
-  function getProficiencyColor(proficiency: Proficiency) {
-    switch (proficiency) {
-      case "Beginner":
-        return "bg-slate-400";
-      case "Intermediate":
-        return "bg-blue-500";
-      case "Advanced":
-        return "bg-indigo-500";
-      case "Expert":
-        return "bg-emerald-500";
-    }
-  }
-
-  function getProficiencyLevel(proficiency: Proficiency) {
-    switch (proficiency) {
-      case "Beginner":
-        return 1;
-      case "Intermediate":
-        return 2;
-      case "Advanced":
-        return 3;
-      case "Expert":
-        return 4;
-    }
+    setSkillToDelete(null);
   }
 
   return (
     <WorkspaceLayout>
-      <div className="px-5 pt-6 sm:px-8 sm:pt-8">
+      <div className="app-page space-y-6">
         <PageHeader
-          eyebrow="Your capabilities"
           title="Skills"
-          description="Organize your skills and track your proficiency."
+          description="What you can do, and how well. Resumes and analyses draw on this list."
           action={
-            <button
-              type="button"
-              onClick={openAddModal}
-              className="app-button-primary self-start"
-            >
-              <Plus size={18} />
-              Add Skill
+            <button type="button" onClick={openAddModal} className="app-button-primary">
+              <Plus size={18} aria-hidden="true" />
+              Add skill
             </button>
           }
         />
-        {isLoading && <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading skills...</div>}
-        {skillsError && <p role="alert" className="app-notice-error mt-4">{skillsError}</p>}
-      </div>
 
-      <div className="space-y-6 p-5 sm:p-8">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            {
-              label: "Total Skills",
-              value: skills.length,
-              icon: Award,
-              tone: "indigo" as const,
-            },
-            {
-              label: "Categories",
-              value: categoryCount,
-              icon: Layers,
-              tone: "blue" as const,
-            },
-            {
-              label: "Advanced / Expert",
-              value: advancedCount,
-              icon: CheckCircle2,
-              tone: "emerald" as const,
-            },
-            {
-              label: "Avg. Experience",
-              value: `${averageExperience} yrs`,
-              icon: BriefcaseBusiness,
-              tone: "amber" as const,
-            },
-          ].map((card) => {
-            const Icon = card.icon;
+        {notice && (
+          <p role="status" className="app-notice-success justify-between">
+            {notice}
+            <button type="button" onClick={() => setNotice("")} aria-label="Dismiss message" className="app-icon-button-ghost -my-1 rounded p-1">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </p>
+        )}
+        {isLoading && skills.length === 0 && (
+          <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading skills…</div>
+        )}
+        {skillsError && <p role="alert" className="app-notice-error">{skillsError}</p>}
+        {pageError && <p role="alert" className="app-notice-error">{pageError}</p>}
 
-            return (
-              <MetricCard
-                key={card.label}
-                label={card.label}
-                value={card.value}
-                icon={Icon}
-                tone={card.tone}
-              />
-            );
-          })}
-        </div>
+        {!isLoading && skills.length === 0 && !skillsError && (
+          <div className="app-empty-state">
+            <h2 className="app-section-title">No skills yet</h2>
+            <p className="mx-auto mt-2 max-w-md text-[0.9375rem] text-slate-500">
+              List the languages, tools, and strengths you bring. You can then attach them to each resume.
+            </p>
+            <button type="button" onClick={openAddModal} className="app-button-secondary mt-5">
+              <Plus size={17} aria-hidden="true" />Add your first skill
+            </button>
+          </div>
+        )}
 
-        <section className="app-surface overflow-hidden">
-          <div className="flex flex-col gap-4 border-b border-gray-100 p-5 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <h2 className="font-semibold text-gray-900">My Skills</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Track the skills you can use in your job applications.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <label className="app-search-control relative flex items-center rounded-xl border border-slate-200 bg-white">
-                <Search
-                  size={17}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
+        {skills.length > 0 && (
+          <>
+            <section aria-label="Filter skills" className="flex flex-col gap-3 md:flex-row md:items-center">
+              <label className="app-search-control flex flex-1 items-center gap-2 border px-3">
+                <Search size={17} className="text-slate-500" aria-hidden="true" />
                 <input
                   aria-label="Search skills"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search skills..."
-                  className="w-full rounded-xl bg-transparent py-2.5 pl-9 pr-3 text-sm outline-none sm:w-52"
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search skills or notes"
+                  className="h-11 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none"
                 />
               </label>
-
-              <select
-                aria-label="Filter skills by category"
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500"
-              >
-                <option value="All">All categories</option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                aria-label="Filter skills by proficiency"
-                value={proficiencyFilter}
-                onChange={(e) => setProficiencyFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500"
-              >
-                <option value="All">All proficiency levels</option>
-                {proficiencyLevels.map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
-            {filteredSkills.length === 0 ? (
-              <div className="app-empty-state md:col-span-2 xl:col-span-3">
-                <Award size={36} className="mx-auto text-gray-300" />
-                <p className="mt-3 font-medium text-gray-700">
-                  No skills found
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  Try another search or add a new skill.
-                </p>
+              <div className="grid grid-cols-2 gap-3 md:flex">
+                <select aria-label="Category" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="form-input md:w-44">
+                  <option value="All">All categories</option>
+                  {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+                </select>
+                <select aria-label="Proficiency" value={proficiencyFilter} onChange={(event) => setProficiencyFilter(event.target.value)} className="form-input md:w-44">
+                  <option value="All">All levels</option>
+                  {proficiencyLevels.map((level) => <option key={level} value={level}>{level}</option>)}
+                </select>
               </div>
-            ) : (
-              filteredSkills.map((skill) => {
-                const Icon = getCategoryIcon(skill.category);
-                const proficiencyLevel = getProficiencyLevel(skill.proficiency);
+            </section>
 
-                return (
-                  <article
-                    key={skill.id}
-                    className="app-data-card flex h-full flex-col !p-5"
-                  >
-                    <div className="flex items-start gap-3.5">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-                        <Icon size={21} strokeWidth={1.9} />
+            <div className="app-filter-summary !mt-0">
+              <p aria-live="polite">
+                Showing <span className="font-semibold text-slate-800">{filteredSkills.length}</span> of {skills.length} skills
+              </p>
+              {filtersActive && <button type="button" onClick={clearFilters} className="app-button-text">Clear filters</button>}
+            </div>
+
+            {groups.length === 0 && (
+              <div className="app-empty-state"><p className="font-medium text-slate-800">No skills match these filters</p></div>
+            )}
+
+            {groups.map(({ category, items }) => (
+              <section key={category} aria-labelledby={`category-${category}`}>
+                <h2 id={`category-${category}`} className="app-section-title mb-3">
+                  {category} <span className="text-base font-normal text-slate-500">({items.length})</span>
+                </h2>
+                <ul className="app-surface divide-y divide-slate-200">
+                  {items.map((skill) => (
+                    <li key={skill.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_11rem_6rem_auto] sm:items-center sm:px-6">
+                      <div className="min-w-0">
+                        <h3 className="truncate font-medium text-slate-900" title={skill.name}>{skill.name}</h3>
+                        {skill.notes && (
+                          <div className="mt-1 max-w-[72ch] text-sm text-slate-600"><ExpandableText text={skill.notes} /></div>
+                        )}
                       </div>
-
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-lg font-semibold tracking-[-0.015em] text-slate-900" title={skill.name}>
-                          {skill.name}
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-500">{skill.category}</p>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-1.5 pt-1 text-xs font-medium text-slate-600">
-                        <span className={`h-2 w-2 rounded-full ${getProficiencyColor(skill.proficiency)}`} />
-                        {skill.proficiency}
-                      </div>
-                    </div>
-
-                    <div className="mt-5 border-y border-slate-100 py-4">
-                      <div className="flex items-center justify-between gap-4 text-sm">
-                        <span className="text-slate-500">Experience</span>
-                        <span className="font-semibold text-slate-800">
+                      <div className="col-start-1 row-start-2 flex flex-wrap items-center gap-x-4 gap-y-1 sm:contents">
+                        <ProficiencyMeter proficiency={skill.proficiency} />
+                        <span className="text-sm tabular-nums text-slate-600">
                           {skill.yearsExperience} {skill.yearsExperience === 1 ? "year" : "years"}
                         </span>
                       </div>
-
-                      <div className="mt-4">
-                        <div className="mb-2 flex items-center justify-between text-xs">
-                          <span className="text-slate-500">Proficiency</span>
-                          <span className="text-slate-400">Level {proficiencyLevel} of 4</span>
-                        </div>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100" aria-label={`${skill.proficiency} proficiency, level ${proficiencyLevel} of 4`}>
-                          <div className="h-full rounded-full bg-indigo-500 transition-[width] duration-300" style={{ width: `${proficiencyLevel * 25}%` }} />
-                        </div>
+                      <div className="col-start-2 row-span-2 row-start-1 sm:col-start-auto sm:row-span-1 sm:row-start-auto">
+                        <ActionMenu
+                          label={`More actions for ${skill.name}`}
+                          items={[
+                            { label: "Edit skill", icon: Pencil, onSelect: () => openEditModal(skill) },
+                            "separator",
+                            { label: "Delete skill", icon: Trash2, tone: "danger", onSelect: () => setSkillToDelete(skill) },
+                          ]}
+                        />
                       </div>
-                    </div>
-
-                    {skill.notes && (
-                      <div className="mt-4">
-                        <p className="mb-1.5 text-xs font-medium text-slate-400">Notes</p>
-                        <ExpandableText text={skill.notes} className="text-sm leading-6 text-slate-600" />
-                      </div>
-                    )}
-
-                    <div className="app-card-actions !mt-auto">
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(skill)}
-                        className="app-button-secondary flex-1"
-                      >
-                        <Pencil size={15} />
-                        Edit skill
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setSkillToDelete(skill)}
-                        aria-label={`Delete ${skill.name}`}
-                        title="Delete skill"
-                        className="app-icon-button hover:!border-red-200 hover:!bg-red-50 hover:!text-red-600"
-                      >
-                        <Trash2 size={17} />
-                      </button>
-                    </div>
-                  </article>
-                );
-              })
-            )}
-          </div>
-
-          <div className="app-results-footer flex flex-wrap items-center justify-between gap-3">
-            <span>Showing {filteredSkills.length} of {skills.length} skills</span>
-            {(search || categoryFilter !== "All" || proficiencyFilter !== "All") && (
-              <button type="button" onClick={() => { setSearch(""); setCategoryFilter("All"); setProficiencyFilter("All"); }} className="app-button-text">
-                Clear filters
-              </button>
-            )}
-          </div>
-        </section>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </>
+        )}
       </div>
 
       {showModal && (
         <div className="app-modal-backdrop app-modal-backdrop-scroll">
-          <div role="dialog" aria-modal="true" aria-labelledby="skill-form-title" className="app-modal-panel my-auto max-w-xl">
-            <div className={`flex items-center justify-between border-b px-6 py-5 ${editingId !== null ? "border-amber-200 bg-amber-50/70" : "border-indigo-200 bg-indigo-50/70"}`}>
+          <div role="dialog" aria-modal="true" aria-labelledby="skill-form-title" className="app-modal-panel my-auto max-w-lg">
+            <div className="app-modal-header">
               <div>
-                <h2 id="skill-form-title" className={`text-lg font-bold ${editingId !== null ? "text-amber-950" : "text-indigo-950"}`}>
-                  {editingId !== null ? "Edit Skill" : "Add Skill"}
-                </h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Enter your skill and experience details.
-                </p>
+                <h2 id="skill-form-title" className="text-xl font-semibold">{editingId !== null ? "Edit skill" : "Add skill"}</h2>
+                <p className="mt-1 text-sm text-slate-500">How you’d describe it on a resume.</p>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                aria-label="Close form"
-                className="app-icon-button app-icon-button-ghost shrink-0"
-              >
-                <X size={20} />
+              <button type="button" onClick={() => setShowModal(false)} disabled={saving} aria-label="Close" className="app-icon-button app-icon-button-ghost">
+                <X size={20} aria-hidden="true" />
               </button>
             </div>
 
-            <form
-              noValidate
-              onSubmit={handleSubmit}
-              className="space-y-5 p-6"
-            >
-              <div>
-                <label className="mb-1.5 block text-sm font-medium">
-                  Skill Name *
-                </label>
+            <form noValidate onSubmit={handleSubmit} className="space-y-5 p-6">
+              <FormField label="Skill" required>
                 <input
                   required
+                  data-autofocus
                   value={form.name}
-                  onChange={(e) =>
-                    setForm({ ...form, name: e.target.value })
-                  }
-                  placeholder="e.g. JavaScript"
-                  className={inputClass}
+                  onChange={(event) => setForm({ ...form, name: event.target.value })}
+                  aria-invalid={error !== "" && !form.name.trim()}
+                  placeholder="TypeScript"
+                  className="form-input"
                 />
+              </FormField>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="Category">
+                  <select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value as SkillCategory })} className="form-input">
+                    {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+                  </select>
+                </FormField>
+                <FormField label="Proficiency">
+                  <select value={form.proficiency} onChange={(event) => setForm({ ...form, proficiency: event.target.value as Proficiency })} className="form-input">
+                    {proficiencyLevels.map((level) => <option key={level} value={level}>{level}</option>)}
+                  </select>
+                </FormField>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium">
-                    Category *
-                  </label>
-                  <select
-                    value={form.category}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        category: e.target.value as SkillCategory,
-                      })
-                    }
-                    className={inputClass}
-                  >
-                    {categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <FormField label="Years of experience" required>
+                <input
+                  required
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  max="60"
+                  step="1"
+                  value={form.yearsExperience}
+                  onChange={(event) => setForm({ ...form, yearsExperience: event.target.value })}
+                  aria-invalid={error.startsWith("Enter whole years")}
+                  className="form-input sm:w-32"
+                />
+              </FormField>
 
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium">
-                    Proficiency *
-                  </label>
-                  <select
-                    value={form.proficiency}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        proficiency: e.target.value as Proficiency,
-                      })
-                    }
-                    className={inputClass}
-                  >
-                    {proficiencyLevels.map((level) => (
-                      <option key={level} value={level}>
-                        {level}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <FormField label="Notes">
+                <textarea
+                  rows={3}
+                  value={form.notes}
+                  onChange={(event) => setForm({ ...form, notes: event.target.value })}
+                  placeholder="Where you’ve used it, and what you built"
+                  className="form-input resize-y"
+                />
+              </FormField>
 
-                <div className="sm:col-span-2">
-                  <label className="mb-1.5 block text-sm font-medium">
-                    Years of Experience *
-                  </label>
-                  <input
-                    required
-                    type="number"
-                    min="0"
-                    max="60"
-                    step="0.5"
-                    value={form.yearsExperience}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        yearsExperience: e.target.value,
-                      })
-                    }
-                    className={inputClass}
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="mb-1.5 block text-sm font-medium">
-                    Notes
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={form.notes}
-                    onChange={(e) =>
-                      setForm({ ...form, notes: e.target.value })
-                    }
-                    placeholder="Describe how you have used this skill..."
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-
-              {error && (
-                <p role="alert" className="text-sm text-red-600">
-                  {error}
-                </p>
-              )}
+              {error && <p role="alert" className="app-notice-error">{error}</p>}
 
               <div className="app-modal-footer">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="app-button-secondary"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="app-button-primary"
-                >
-                  {editingId !== null ? "Save Changes" : "Add Skill"}
+                <button type="button" onClick={() => setShowModal(false)} disabled={saving} className="app-button-secondary">Cancel</button>
+                <button type="submit" disabled={saving} aria-busy={saving} className="app-button-primary">
+                  {saving && <span className="app-spinner !border-white/30 !border-t-white" aria-hidden="true" />}
+                  {editingId !== null ? "Save changes" : "Add skill"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
       {skillToDelete && (
         <div className="app-modal-backdrop !z-[80]">
-          <div role="alertdialog" aria-modal="true" aria-labelledby="delete-skill-title" aria-describedby="delete-skill-description" className="app-modal-panel max-w-md p-6 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600"><Trash2 size={22} /></div>
-            <h2 id="delete-skill-title" className="mx-auto mt-4 w-fit rounded-lg bg-red-50 px-3 py-2 text-lg font-bold text-red-800">Delete skill?</h2>
-            <p id="delete-skill-description" className="mt-2 text-sm text-gray-500">Delete &quot;{skillToDelete.name}&quot; from your skills?</p>
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
-              <button type="button" onClick={() => setSkillToDelete(null)} className="app-button-secondary">Cancel</button>
+          <div role="alertdialog" aria-modal="true" aria-labelledby="delete-skill-title" aria-describedby="delete-skill-description" className="app-modal-panel max-w-md p-6">
+            <h2 id="delete-skill-title" className="text-lg font-semibold text-slate-900">Delete this skill?</h2>
+            <p id="delete-skill-description" className="mt-2 text-[0.9375rem] leading-6 text-slate-600">
+              “{skillToDelete.name}” will be permanently removed from your skills list. Resumes that list it keep their own copy. This can’t be undone.
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" data-autofocus onClick={() => setSkillToDelete(null)} className="app-button-secondary">Cancel</button>
               <button type="button" onClick={confirmDeleteSkill} className="app-button-danger">Delete skill</button>
             </div>
           </div>
         </div>
       )}
     </WorkspaceLayout>
+  );
+}
+
+function FormField({ label, required = false, children }: { label: string; required?: boolean; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="app-field-label">
+        {label}
+        {required ? <span className="font-normal text-slate-500"> (required)</span> : null}
+      </span>
+      {children}
+    </label>
   );
 }

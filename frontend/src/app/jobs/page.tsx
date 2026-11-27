@@ -1,94 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import WorkspaceLayout from "@/components/WorkspaceLayout";
 import JobDescription from "@/components/JobDescription";
 import DescriptionFormattingToolbar from "@/components/DescriptionFormattingToolbar";
 import { useJobs, type Job } from "@/components/JobsProvider";
+import { useApplications } from "@/components/ApplicationsProvider";
+import { useInterviews } from "@/components/InterviewsProvider";
 import ResumeAnalysisDialog from "@/components/ResumeAnalysisDialog";
+import ActionMenu from "@/components/ActionMenu";
+import { StatusChip } from "@/components/CareerTrack";
 import { countWords, MIN_JOB_WORDS, MAX_JOB_CHARACTERS } from "@/lib/jobDescription";
 import useDialogControls from "@/hooks/useDialogControls";
-import MetricCard from "@/components/MetricCard";
-import {
-  Search,
-  Plus,
-  BriefcaseBusiness,
-  MapPin,
-  Clock3,
-  Building2,
-  X,
-  SlidersHorizontal,
-  Pencil,
-  Trash2,
-  Sparkles,
-} from "lucide-react";
+import { History, Pencil, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 
-export const initialJobs = [
-  {
-    id: 1,
-    company: "Google",
-    position: "Junior Software Engineer",
-    location: "Makati, Philippines",
-    employmentType: "Full-time",
-    salary: "₱35,000–₱50,000 / month",
-    dateAdded: "Oct 9, 2026",
-    description:
-      "Work with an engineering team to develop, test, and maintain software applications.",
-  },
-  {
-    id: 2,
-    company: "Microsoft",
-    position: "Frontend Developer",
-    location: "Remote",
-    employmentType: "Full-time",
-    salary: "₱40,000–₱60,000 / month",
-    dateAdded: "Oct 8, 2026",
-    description:
-      "Build responsive user interfaces and collaborate with designers and backend developers.",
-  },
-  {
-    id: 3,
-    company: "Accenture",
-    position: "Associate Software Engineer",
-    location: "Taguig, Philippines",
-    employmentType: "Full-time",
-    salary: "Not specified",
-    dateAdded: "Oct 7, 2026",
-    description:
-      "Support application development, software testing, and technical problem-solving.",
-  },
-  {
-    id: 4,
-    company: "Canva",
-    position: "UI Developer Intern",
-    location: "Remote",
-    employmentType: "Internship",
-    salary: "Not specified",
-    dateAdded: "Oct 6, 2026",
-    description:
-      "Help implement accessible interfaces and improve the user experience of web products.",
-  },
-  {
-    id: 5,
-    company: "IBM",
-    position: "IT Support Associate",
-    location: "Quezon City, Philippines",
-    employmentType: "Contract",
-    salary: "₱25,000–₱35,000 / month",
-    dateAdded: "Oct 5, 2026",
-    description:
-      "Assist users with technical issues and support daily IT operations.",
-  },
-];
-
-const employmentTypes = [
-  "All types",
-  "Full-time",
-  "Part-time",
-  "Contract",
-  "Internship",
-];
+const employmentTypes = ["All types", "Full-time", "Part-time", "Contract", "Internship"];
 
 const emptyForm = {
   company: "",
@@ -109,31 +37,46 @@ export default function JobsPage() {
     isLoading: jobsLoading,
     error: jobsError,
   } = useJobs();
+  const { applications } = useApplications();
+  const { interviews } = useInterviews();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("All types");
   const [locationFilter, setLocationFilter] = useState("All locations");
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [notice, setNotice] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
   const [analysisJob, setAnalysisJob] = useState<Job | null>(null);
   const [analysisView, setAnalysisView] = useState<"new" | "history">("new");
-  const dashboardShortcutHandled = useRef(false);
+  const shortcutHandled = useRef(false);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
-  useDialogControls(showForm, closeForm);
+  useDialogControls(showForm && !saving, closeForm);
   useDialogControls(jobToDelete !== null, () => setJobToDelete(null));
 
+  // Deep links: /jobs?new=1 opens the form; /jobs?analysis=<id>[&view=history] opens analysis.
   useEffect(() => {
-    if (dashboardShortcutHandled.current || jobsLoading) return;
-    dashboardShortcutHandled.current = true;
+    if (shortcutHandled.current || jobsLoading) return;
+    shortcutHandled.current = true;
     const params = new URLSearchParams(window.location.search);
-    const jobId = params.get("analysis");
-    const job = jobs.find((item) => item.id === jobId);
+    let active = true;
+
+    if (params.get("new") === "1") {
+      queueMicrotask(() => {
+        if (!active) return;
+        openAddJob();
+        window.history.replaceState(null, "", "/jobs");
+      });
+      return () => { active = false; };
+    }
+
+    const job = jobs.find((item) => item.id === params.get("analysis"));
     if (!job) return;
     const requestedView = params.get("view") === "history" ? "history" : "new";
-    let active = true;
     queueMicrotask(() => {
       if (!active) return;
       setAnalysisView(requestedView);
@@ -148,19 +91,27 @@ export default function JobsPage() {
     [jobs],
   );
 
+  const applicationByJob = useMemo(
+    () => new Map(applications.map((application) => [application.jobId, application])),
+    [applications],
+  );
+
   const filteredJobs = jobs.filter((job) => {
     const matchesSearch = `${job.company} ${job.position} ${job.location}`
       .toLowerCase()
       .includes(search.toLowerCase());
-
-    const matchesType =
-      typeFilter === "All types" || job.employmentType === typeFilter;
-
-    const matchesLocation =
-      locationFilter === "All locations" || job.location === locationFilter;
-
+    const matchesType = typeFilter === "All types" || job.employmentType === typeFilter;
+    const matchesLocation = locationFilter === "All locations" || job.location === locationFilter;
     return matchesSearch && matchesType && matchesLocation;
   });
+
+  const filtersActive = search !== "" || typeFilter !== "All types" || locationFilter !== "All locations";
+
+  function clearFilters() {
+    setSearch("");
+    setTypeFilter("All types");
+    setLocationFilter("All locations");
+  }
 
   function openAddJob() {
     setEditingId(null);
@@ -194,14 +145,15 @@ export default function JobsPage() {
     event.preventDefault();
 
     if (!form.company.trim() || !form.position.trim()) {
-      setError("Company and position are required.");
+      setError("Enter a company and a position.");
       return;
     }
 
     if (countWords(form.description) < MIN_JOB_WORDS || form.description.length > MAX_JOB_CHARACTERS) {
-      setError("Job description needs at least 50 words and must be 20,000 characters or fewer. Include responsibilities, skills, experience, and qualifications.");
+      setError(`The description needs at least ${MIN_JOB_WORDS} words and at most 20,000 characters. Paste the original posting where possible.`);
       return;
     }
+
     const jobData = {
       company: form.company.trim(),
       position: form.position.trim(),
@@ -211,405 +163,301 @@ export default function JobsPage() {
       description: form.description.trim(),
     };
 
+    setSaving(true);
     try {
       if (editingId !== null) {
         await updateJob(editingId, jobData);
+        setNotice(`Saved changes to ${jobData.position}.`);
       } else {
         await createJob(jobData);
+        setNotice(`Added ${jobData.position} at ${jobData.company}.`);
       }
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to save this job.",
-      );
+      setError(requestError instanceof Error ? requestError.message : "The job could not be saved. Try again.");
       return;
+    } finally {
+      setSaving(false);
     }
 
-    setSearch("");
-    setTypeFilter("All types");
-    setLocationFilter("All locations");
+    clearFilters();
     closeForm();
-  }
-
-  function handleDeleteJob(id: string) {
-    const job = jobs.find((item) => item.id === id);
-
-    if (!job) return;
-
-    setJobToDelete(job);
   }
 
   async function confirmDeleteJob() {
     if (!jobToDelete) return;
-
+    setDeleteError("");
     try {
       await deleteJob(jobToDelete.id);
+      setNotice(`Deleted ${jobToDelete.position}.`);
       setLocationFilter("All locations");
       setJobToDelete(null);
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to delete this job.",
-      );
+      setDeleteError(requestError instanceof Error ? requestError.message : "The job could not be deleted. Try again.");
     }
   }
 
+  const deleteApplication = jobToDelete ? applicationByJob.get(jobToDelete.id) : undefined;
+  const deleteInterviewCount = deleteApplication
+    ? interviews.filter((interview) => interview.applicationId === deleteApplication.id).length
+    : 0;
+  const wordCount = countWords(form.description);
+
   return (
     <WorkspaceLayout>
-      <div className="mx-auto max-w-7xl space-y-7 p-4 sm:p-8">
+      <div className="app-page space-y-6">
         <PageHeader
-          eyebrow="Your opportunities"
-          title="Saved Jobs"
-          description="Organize the opportunities you want to pursue."
+          title="Jobs"
+          description="Roles you’re considering. Analyze your resume against one, then track it once you apply."
           action={
-            <button
-              type="button"
-              onClick={openAddJob}
-              className="app-button-primary self-start"
-            >
-              <Plus size={18} />
-              Save Job
+            <button type="button" onClick={openAddJob} className="app-button-primary">
+              <Plus size={18} aria-hidden="true" />
+              Add job
             </button>
           }
         />
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard
-            label="Saved Jobs"
-            value={jobs.length}
-            icon={BriefcaseBusiness}
-            tone="indigo"
-          />
-
-          <MetricCard
-            label="Full-time Roles"
-            value={
-              jobs.filter((job) => job.employmentType === "Full-time").length
-            }
-            icon={Building2}
-            tone="blue"
-          />
-
-          <MetricCard
-            label="Remote Opportunities"
-            value={
-              jobs.filter((job) =>
-                job.location.toLowerCase().includes("remote"),
-              ).length
-            }
-            icon={MapPin}
-            tone="emerald"
-          />
-        </section>
-
-        {jobsLoading && (
-          <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading your saved jobs...</div>
-        )}
-
-        {jobsError && (
-          <p role="alert" className="app-notice-error">
-            {jobsError}
+        {notice && (
+          <p role="status" className="app-notice-success justify-between">
+            {notice}
+            <button type="button" onClick={() => setNotice("")} aria-label="Dismiss message" className="app-icon-button-ghost -my-1 rounded p-1">
+              <X size={16} aria-hidden="true" />
+            </button>
           </p>
         )}
+        {jobsError && <p role="alert" className="app-notice-error">{jobsError}</p>}
 
-        <section className="app-surface p-4 sm:p-6">
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal size={19} className="text-slate-500" />
-            <h2 className="font-semibold text-slate-900">
-              Find opportunities
-            </h2>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <label className="app-search-control flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-3">
-              <Search size={18} className="shrink-0 text-slate-400" />
+        {jobs.length > 0 && (
+          <section aria-label="Filter jobs" className="flex flex-col gap-3 md:flex-row md:items-center">
+            <label className="app-search-control flex flex-1 items-center gap-2 border px-3">
+              <Search size={17} className="text-slate-500" aria-hidden="true" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search company, role, location..."
+                placeholder="Search company, role, or location"
                 aria-label="Search jobs"
-                className="w-full min-w-0 bg-transparent text-sm outline-none"
+                className="h-11 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none"
               />
             </label>
-
-            <select
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value)}
-              aria-label="Filter by employment type"
-              className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-indigo-500"
-            >
-              {employmentTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={locationFilter}
-              onChange={(event) => setLocationFilter(event.target.value)}
-              aria-label="Filter by location"
-              className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-indigo-500"
-            >
-              {locations.map((location) => (
-                <option key={location} value={location}>
-                  {location}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="app-filter-summary">
-            <p>
-              Showing <span className="font-semibold text-slate-700">{filteredJobs.length}</span>{" "}
-              of {jobs.length} saved jobs
-            </p>
-            {(search || typeFilter !== "All types" || locationFilter !== "All locations") && (
-              <button
-                type="button"
-                onClick={() => { setSearch(""); setTypeFilter("All types"); setLocationFilter("All locations"); }}
-                className="app-button-text"
+            <div className="grid grid-cols-2 gap-3 md:flex">
+              <select
+                value={typeFilter}
+                onChange={(event) => setTypeFilter(event.target.value)}
+                aria-label="Employment type"
+                className="form-input md:w-40"
               >
-                Clear filters
-              </button>
-            )}
-          </div>
-        </section>
-
-        <section className="space-y-4">
-          {filteredJobs.map((job) => (
-            <article
-              key={job.id}
-              className="app-surface app-surface-interactive p-5 sm:p-6"
-            >
-              <div className="flex flex-col justify-between gap-4 sm:flex-row">
-                <div className="flex gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-                    <Building2 size={23} />
-                  </div>
-
-                  <div className="min-w-0">
-                    <h2 className="text-lg font-bold text-slate-900">
-                      {job.position}
-                    </h2>
-                    <p className="mt-1 font-medium text-slate-600">
-                      {job.company}
-                    </p>
-
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-500">
-                      <span className="flex items-center gap-1.5">
-                        <MapPin size={15} />
-                        {job.location}
-                      </span>
-
-                      <span className="flex items-center gap-1.5">
-                        <Clock3 size={15} />
-                        {job.employmentType}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="sm:text-right">
-                  <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                    Saved
-                  </span>
-
-                  <p className="mt-3 text-sm font-semibold text-slate-800">
-                    {job.salary}
-                  </p>
-
-                  <p className="mt-1 text-xs text-slate-400">
-                    Added {job.dateAdded}
-                  </p>
-                  {job.latestAnalysisScore !== null && (
-                    <p className={`mt-2 text-sm font-semibold ${job.latestAnalysisIsStale ? "text-amber-700" : "text-violet-700"}`}>
-                      {job.latestAnalysisIsStale ? "Previous" : "Latest"} AI match: {job.latestAnalysisScore}/100
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <JobDescription description={job.description} />
-
-              {job.latestAnalysisIsStale && (
-                <div role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  <p className="font-semibold">AI analysis outdated</p>
-                  <ul className="mt-1 list-disc space-y-1 pl-5">
-                    {job.latestAnalysisStaleReasons.map((reason) => <li key={reason}>{reason}</li>)}
-                  </ul>
-                  <p className="mt-2 text-xs">Run the analysis again before relying on the previous score.</p>
-                </div>
-              )}
-
-              <div className="app-card-actions">
-                <button type="button" onClick={() => { setAnalysisView("new"); setAnalysisJob(job); }} className="app-button-ai">
-                  <Sparkles size={16} aria-hidden="true" />{job.latestAnalysisIsStale ? "Analyze Again" : "Analyze Resume with AI"}
-                </button>
-                <button type="button" onClick={() => { setAnalysisView("history"); setAnalysisJob(job); }} className="app-button-secondary !border-violet-200 !text-violet-700 hover:!bg-violet-50">Analysis History</button>
-                <button
-                  type="button"
-                  onClick={() => openEditJob(job)}
-                  aria-label={`Edit ${job.position} at ${job.company}`}
-                  className="app-button-secondary"
-                >
-                  <Pencil size={16} />
-                  Edit
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleDeleteJob(job.id)}
-                  aria-label={`Delete ${job.position} at ${job.company}`}
-                  className="app-button-danger-outline"
-                >
-                  <Trash2 size={16} />
-                  Delete
-                </button>
-              </div>
-            </article>
-          ))}
-
-          {filteredJobs.length === 0 && (
-            <div className="app-empty-state">
-              <BriefcaseBusiness
-                size={32}
-                className="mx-auto text-slate-300"
-              />
-
-              <h3 className="mt-4 font-semibold text-slate-800">
-                No saved jobs found
-              </h3>
-
-              <p className="mt-2 text-sm text-slate-500">
-                Try changing your search or filters.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch("");
-                  setTypeFilter("All types");
-                  setLocationFilter("All locations");
-                }}
-                className="app-button-text mt-4"
+                {employmentTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+              <select
+                value={locationFilter}
+                onChange={(event) => setLocationFilter(event.target.value)}
+                aria-label="Location"
+                className="form-input md:w-48"
               >
-                Clear filters
-              </button>
+                {locations.map((location) => <option key={location} value={location}>{location}</option>)}
+              </select>
             </div>
-          )}
-        </section>
+          </section>
+        )}
+
+        {jobsLoading && jobs.length === 0 && (
+          <div role="status" className="app-loading-state">
+            <span className="app-spinner" aria-hidden="true" />Loading your jobs…
+          </div>
+        )}
+
+        {!jobsLoading && jobs.length === 0 && !jobsError && (
+          <div className="app-empty-state">
+            <h2 className="app-section-title">No jobs yet</h2>
+            <p className="mx-auto mt-2 max-w-md text-[0.9375rem] text-slate-500">
+              Add a role you’re interested in. Include the full description so the resume analysis has something to compare against.
+            </p>
+            <button type="button" onClick={openAddJob} className="app-button-secondary mt-5">
+              <Plus size={17} aria-hidden="true" />Add your first job
+            </button>
+          </div>
+        )}
+
+        {jobs.length > 0 && (
+          <>
+            <div className="app-filter-summary !mt-0">
+              <p aria-live="polite">
+                Showing <span className="font-semibold text-slate-800">{filteredJobs.length}</span> of {jobs.length} jobs
+              </p>
+              {filtersActive && (
+                <button type="button" onClick={clearFilters} className="app-button-text">Clear filters</button>
+              )}
+            </div>
+
+            {filteredJobs.length === 0 ? (
+              <div className="app-empty-state">
+                <p className="font-medium text-slate-800">No jobs match these filters</p>
+                <button type="button" onClick={clearFilters} className="app-button-secondary app-button-compact mt-4">Clear filters</button>
+              </div>
+            ) : (
+              <ul className="app-surface divide-y divide-slate-200">
+                {filteredJobs.map((job) => {
+                  const application = applicationByJob.get(job.id);
+                  return (
+                    <li key={job.id}>
+                      <article aria-labelledby={`job-${job.id}-title`} className="p-5 sm:p-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <h2 id={`job-${job.id}-title`} className="text-[1.1875rem] font-semibold leading-snug text-slate-900">
+                              {job.position}
+                            </h2>
+                            <p className="mt-0.5 text-[0.9375rem] text-slate-700">{job.company}</p>
+                            <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-500">
+                              <div className="flex gap-1"><dt className="sr-only">Location</dt><dd>{job.location}</dd></div>
+                              <div className="flex gap-1"><dt className="sr-only">Type</dt><dd>{job.employmentType}</dd></div>
+                              {job.salary !== "Not specified" && (
+                                <div className="flex gap-1"><dt className="sr-only">Salary</dt><dd className="tabular-nums">{job.salary}</dd></div>
+                              )}
+                              <div className="flex gap-1"><dt>Added</dt><dd>{job.dateAdded}</dd></div>
+                            </dl>
+                          </div>
+
+                          <div className="flex shrink-0 items-start gap-2">
+                            {application && <StatusChip status={application.status} />}
+                            <ActionMenu
+                              label={`More actions for ${job.position} at ${job.company}`}
+                              items={[
+                                {
+                                  label: "Analysis history",
+                                  icon: History,
+                                  onSelect: () => { setAnalysisView("history"); setAnalysisJob(job); },
+                                },
+                                { label: "Edit job", icon: Pencil, onSelect: () => openEditJob(job) },
+                                "separator",
+                                {
+                                  label: "Delete job",
+                                  icon: Trash2,
+                                  tone: "danger",
+                                  onSelect: () => { setDeleteError(""); setJobToDelete(job); },
+                                },
+                              ]}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-4 max-w-[72ch]">
+                          <JobDescription description={job.description} />
+                        </div>
+
+                        {job.latestAnalysisIsStale && (
+                          <div role="status" className="app-notice-warning mt-4 flex-col !gap-1">
+                            <p className="font-semibold">Resume match is out of date (was {job.latestAnalysisScore}/100)</p>
+                            <ul className="list-disc pl-5">
+                              {job.latestAnalysisStaleReasons.map((reason) => <li key={reason}>{reason}</li>)}
+                            </ul>
+                          </div>
+                        )}
+
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setAnalysisView("new"); setAnalysisJob(job); }}
+                            className="app-button-secondary app-button-compact"
+                          >
+                            <Sparkles size={16} aria-hidden="true" />
+                            {job.latestAnalysisIsStale ? "Re-run analysis" : job.latestAnalysisScore !== null ? "Analyze again" : "Analyze resume"}
+                          </button>
+                          {application ? (
+                            <Link href={`/applications?q=${encodeURIComponent(job.position)}`} className="app-button-ghost app-button-compact">
+                              View application
+                            </Link>
+                          ) : (
+                            <Link href={`/applications?job=${job.id}`} className="app-button-ghost app-button-compact">
+                              Track application
+                            </Link>
+                          )}
+                          {job.latestAnalysisScore !== null && !job.latestAnalysisIsStale && (
+                            <span className="ml-auto text-sm text-slate-600">
+                              Resume match <span className="font-semibold tabular-nums text-slate-900">{job.latestAnalysisScore}/100</span>
+                            </span>
+                          )}
+                        </div>
+                      </article>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
+        )}
       </div>
 
       {showForm && (
         <div className="app-modal-backdrop app-modal-backdrop-scroll">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="job-form-title"
-            className="app-modal-panel my-auto max-w-xl"
-          >
-            <div className={`flex items-start justify-between gap-4 border-b px-6 py-5 ${editingId !== null ? "border-amber-200 bg-amber-50/70" : "border-indigo-200 bg-indigo-50/70"}`}>
+          <div role="dialog" aria-modal="true" aria-labelledby="job-form-title" className="app-modal-panel app-modal-sheet my-auto max-w-xl">
+            <div className="app-modal-header">
               <div>
-                <h2
-                  id="job-form-title"
-                  className={`text-xl font-bold ${editingId !== null ? "text-amber-950" : "text-indigo-950"}`}
-                >
-                  {editingId !== null ? "Edit saved job" : "Save a job"}
+                <h2 id="job-form-title" className="text-xl font-semibold">
+                  {editingId !== null ? "Edit job" : "Add job"}
                 </h2>
-
                 <p className="mt-1 text-sm text-slate-500">
-                  {editingId !== null
-                    ? "Update the details of this opportunity."
-                    : "Record an opportunity you want to track."}
+                  {editingId !== null ? "Update the details of this role." : "Record a role you want to pursue."}
                 </p>
               </div>
-
-              <button
-                type="button"
-                aria-label="Close form"
-                onClick={closeForm}
-                className="app-icon-button app-icon-button-ghost shrink-0"
-              >
-                <X size={20} />
+              <button type="button" aria-label="Close" onClick={closeForm} disabled={saving} className="app-icon-button app-icon-button-ghost">
+                <X size={20} aria-hidden="true" />
               </button>
             </div>
 
-            <form
-              noValidate
-              onSubmit={handleSaveJob}
-              className="space-y-4 p-6"
-            >
+            <form noValidate onSubmit={handleSaveJob} className="space-y-5 p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField label="Company *">
+                <FormField label="Company" required>
                   <input
                     required
+                    data-autofocus
                     value={form.company}
-                    onChange={(event) =>
-                      setForm({ ...form, company: event.target.value })
-                    }
-                    placeholder="e.g. Google"
+                    onChange={(event) => setForm({ ...form, company: event.target.value })}
+                    aria-invalid={error !== "" && !form.company.trim()}
+                    autoComplete="organization"
                     className="form-input"
                   />
                 </FormField>
-
-                <FormField label="Position *">
+                <FormField label="Position" required>
                   <input
                     required
                     value={form.position}
-                    onChange={(event) =>
-                      setForm({ ...form, position: event.target.value })
-                    }
-                    placeholder="e.g. Software Engineer"
+                    onChange={(event) => setForm({ ...form, position: event.target.value })}
+                    aria-invalid={error !== "" && !form.position.trim()}
+                    autoComplete="organization-title"
                     className="form-input"
                   />
                 </FormField>
-
                 <FormField label="Location">
                   <input
                     value={form.location}
-                    onChange={(event) =>
-                      setForm({ ...form, location: event.target.value })
-                    }
-                    placeholder="e.g. Manila or Remote"
+                    onChange={(event) => setForm({ ...form, location: event.target.value })}
+                    placeholder="City, or Remote"
                     className="form-input"
                   />
                 </FormField>
-
                 <FormField label="Employment type">
                   <select
                     value={form.employmentType}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        employmentType: event.target.value,
-                      })
-                    }
+                    onChange={(event) => setForm({ ...form, employmentType: event.target.value })}
                     className="form-input"
                   >
-                    {employmentTypes.slice(1).map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
+                    {employmentTypes.slice(1).map((type) => <option key={type} value={type}>{type}</option>)}
                   </select>
                 </FormField>
               </div>
 
-              <FormField label="Salary (optional)">
+              <FormField label="Salary">
                 <input
                   value={form.salary}
-                  onChange={(event) =>
-                    setForm({ ...form, salary: event.target.value })
-                  }
-                  placeholder="e.g. ₱30,000–₱40,000 / month"
+                  onChange={(event) => setForm({ ...form, salary: event.target.value })}
+                  placeholder="₱30,000–₱40,000 / month"
                   className="form-input"
                 />
               </FormField>
 
-              <FormField label="Job description *">
+              <div>
+                <label htmlFor="job-description" className="app-field-label">
+                  Job description<span className="font-normal text-slate-500"> (required)</span>
+                </label>
                 <DescriptionFormattingToolbar
                   textareaRef={descriptionRef}
                   value={form.description}
@@ -617,46 +465,30 @@ export default function JobsPage() {
                   onChange={(description) => setForm({ ...form, description })}
                 />
                 <textarea
+                  id="job-description"
                   ref={descriptionRef}
                   required
-                  rows={6}
+                  rows={9}
                   maxLength={MAX_JOB_CHARACTERS}
                   aria-describedby="job-description-help"
+                  aria-invalid={error !== "" && wordCount < MIN_JOB_WORDS}
                   value={form.description}
-                  onChange={(event) =>
-                    setForm({ ...form, description: event.target.value })
-                  }
-                  placeholder="Include the role's responsibilities, required skills, experience, and qualifications. Paste the original job description where available."
+                  onChange={(event) => setForm({ ...form, description: event.target.value })}
+                  placeholder="Paste the original posting: responsibilities, required skills, experience, and qualifications."
                   className="form-input resize-y !rounded-t-none"
                 />
-                <p className="mt-2 text-xs text-slate-400">
-                  Select text before choosing bold or italic. Heading and list controls format the selected lines.
+                <p id="job-description-help" className={`app-field-hint ${wordCount < MIN_JOB_WORDS ? "!text-amber-700" : ""}`}>
+                  <span className="tabular-nums">{wordCount}</span> of {MIN_JOB_WORDS} words minimum. Specific requirements make the resume analysis more useful.
                 </p>
-                <p id="job-description-help" className={`mt-2 text-xs ${countWords(form.description) < MIN_JOB_WORDS ? "text-amber-700" : "text-slate-500"}`}>
-                  {countWords(form.description)} words / {MIN_JOB_WORDS} minimum. Include specific job requirements for a useful AI comparison.
-                </p>
-              </FormField>
+              </div>
 
-              {error && (
-                <p role="alert" className="text-sm font-medium text-red-600">
-                  {error}
-                </p>
-              )}
+              {error && <p role="alert" className="app-notice-error">{error}</p>}
 
-              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={closeForm}
-                  className="app-button-secondary"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="app-button-primary"
-                >
-                  {editingId !== null ? "Save Changes" : "Save Job"}
+              <div className="app-modal-footer">
+                <button type="button" onClick={closeForm} disabled={saving} className="app-button-secondary">Cancel</button>
+                <button type="submit" disabled={saving} aria-busy={saving} className="app-button-primary">
+                  {saving && <span className="app-spinner !border-white/30 !border-t-white" aria-hidden="true" />}
+                  {editingId !== null ? "Save changes" : "Add job"}
                 </button>
               </div>
             </form>
@@ -667,77 +499,61 @@ export default function JobsPage() {
       {jobToDelete && (
         <div className="app-modal-backdrop !z-[80]">
           <div
-            role="dialog"
+            role="alertdialog"
             aria-modal="true"
-            aria-labelledby="delete-job-dialog-title"
-            className="app-modal-panel max-w-sm p-6 text-center"
+            aria-labelledby="delete-job-title"
+            aria-describedby="delete-job-description"
+            className="app-modal-panel max-w-md p-6"
           >
-            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
-              <Trash2 size={21} />
+            <h2 id="delete-job-title" className="text-lg font-semibold text-slate-900">Delete this job?</h2>
+            <div id="delete-job-description" className="mt-2 space-y-2 text-[0.9375rem] leading-6 text-slate-600">
+              <p>
+                “{jobToDelete.position}” at {jobToDelete.company} will be permanently deleted, along with its resume analysis history.
+              </p>
+              {deleteApplication && (
+                <p className="font-medium text-red-700">
+                  Its tracked application{deleteInterviewCount > 0 ? ` and ${deleteInterviewCount} interview${deleteInterviewCount === 1 ? "" : "s"}` : ""} will also be deleted.
+                </p>
+              )}
+              <p>This can’t be undone.</p>
             </div>
-
-            <h2
-              id="delete-job-dialog-title"
-              className="mx-auto mt-5 w-fit rounded-lg bg-red-50 px-3 py-2 text-lg font-bold text-red-800"
-            >
-              Delete this job?
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Are you sure you want to delete “{jobToDelete.position}” at{" "}
-              {jobToDelete.company}?
-            </p>
-
-            <div className="mt-6 flex flex-col-reverse justify-center gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => setJobToDelete(null)}
-                className="app-button-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteJob}
-                className="app-button-danger"
-              >
-                Delete job
-              </button>
+            {deleteError && <p role="alert" className="app-notice-error mt-4">{deleteError}</p>}
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" data-autofocus onClick={() => setJobToDelete(null)} className="app-button-secondary">Cancel</button>
+              <button type="button" onClick={confirmDeleteJob} className="app-button-danger">Delete job</button>
             </div>
           </div>
         </div>
       )}
 
-      <style jsx global>{`
-        .form-input {
-          width: 100%;
-          border: 1px solid #e2e8f0;
-          border-radius: 0.75rem;
-          padding: 0.7rem 0.85rem;
-          font-size: 0.875rem;
-          outline: none;
-          background-color: white;
-        }
-
-        .form-input:focus {
-          border-color: #4f46e5;
-          box-shadow: 0 0 0 3px rgb(79 70 229 / 12%);
-        }
-      `}</style>
-      {analysisJob && <ResumeAnalysisDialog key={analysisJob.id} job={jobs.find((job) => job.id === analysisJob.id) ?? analysisJob} initialView={analysisView} onAnalysisChange={refreshJobs} onClose={() => setAnalysisJob(null)} />}
+      {analysisJob && (
+        <ResumeAnalysisDialog
+          key={analysisJob.id}
+          job={jobs.find((job) => job.id === analysisJob.id) ?? analysisJob}
+          initialView={analysisView}
+          onAnalysisChange={refreshJobs}
+          onClose={() => setAnalysisJob(null)}
+        />
+      )}
     </WorkspaceLayout>
   );
 }
 
 function FormField({
   label,
+  required = false,
   children,
 }: {
   label: string;
+  required?: boolean;
   children: ReactNode;
 }) {
   return (
-    <label className="block space-y-2 text-sm font-medium text-slate-700">
-      {label}
+    <label className="block">
+      <span className="app-field-label">
+        {label}
+        {required ? <span className="font-normal text-slate-500"> (required)</span> : null}
+      </span>
       {children}
     </label>
   );
