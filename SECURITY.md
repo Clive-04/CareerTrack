@@ -36,6 +36,19 @@ The backend intentionally refuses to start in production when HTTPS origins, hos
 - Production responses include HSTS and standard anti-sniffing, anti-framing, referrer, permissions, and no-store headers where sensitive data is involved.
 - Browser JWTs are stored in Secure HttpOnly cookies instead of `localStorage`. State-changing cookie-authenticated requests require an origin check and a matching in-memory CSRF token.
 
+## Database access model
+
+- The browser never talks to Supabase. All data access goes through the FastAPI backend, which connects with the Supabase Session pooler URL as the role that runs Alembic and owns every application table.
+- CareerTrack issues its own JWTs. Supabase Auth is not used, so `auth.uid()` does not identify CareerTrack users and must not appear in policies.
+- Per-user isolation is enforced in the API: every query filters by the signed-in user's id, and linked jobs, resumes, and applications are ownership-checked before they are attached.
+- Migration `d8a0b2c4e6f7` closes the Supabase Data API (PostgREST/GraphQL): RLS is enabled with no policies on every table including `alembic_version`, all privileges are revoked from `anon` and `authenticated`, and default privileges no longer grant future tables to those roles. The table owner is not subject to RLS, so the backend is unaffected. Do not add `FORCE ROW LEVEL SECURITY` while the backend connects as the owner.
+- Never place the Supabase `service_role` key or database URL in a frontend variable.
+- Every new table must be added to a lockdown migration; `backend/tests/test_data_api_lockdown.py` fails when a model table is not covered. Set `CAREERTRACK_PG_TEST_URL` to a disposable migrated database to run the live checks.
+- Optionally, also remove `public` from **Project Settings > Data API > Exposed schemas** in Supabase, since no client uses the Data API.
+
 ## Remaining architectural improvement
+
+Database-enforced per-user isolation (a non-owner runtime role, `FORCE ROW LEVEL SECURITY`, and per-request `SET LOCAL app.user_id` policies) would protect against application-layer authorization bugs. It requires a separate migration role and connection string, so it is deferred.
+
 
 The production Content Security Policy still permits inline scripts and styles for Next.js compatibility. A future deployment hardening pass should adopt per-request CSP nonces after confirming support across every rendered route. Global gateway rate limits remain required when running multiple API workers or instances.
