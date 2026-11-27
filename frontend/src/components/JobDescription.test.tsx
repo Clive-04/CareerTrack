@@ -36,6 +36,13 @@ describe("JobDescription", () => {
     expect(container.querySelector("em")).toHaveTextContent("collaboratively");
   });
 
+  it("keeps a heading separate from the text directly under it", () => {
+    expect(descriptionParagraphs("## About the role\nBuild accessible interfaces.")).toEqual([
+      "## About the role",
+      "Build accessible interfaces.",
+    ]);
+  });
+
   it("does not interpret bold text at the start of a paragraph as a list", () => {
     const { container } = render(
       <JobDescription description="**Important:** Review the complete requirements before applying." />,

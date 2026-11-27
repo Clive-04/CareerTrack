@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import BrandLogo from "@/components/BrandLogo";
@@ -75,7 +75,7 @@ export default function LandingPage() {
 
       <main id="landing-content" tabIndex={-1} className="outline-none">
         <section className="mx-auto grid max-w-6xl gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center lg:py-20">
-          <div>
+          <div className="app-hero-enter" style={{ "--i": 0 } as CSSProperties}>
             <h1 className="font-display max-w-xl text-[2.5rem] leading-[1.1] text-slate-900 sm:text-[3.25rem]">
               Organize your job search, one stage at a time.
             </h1>
@@ -89,7 +89,7 @@ export default function LandingPage() {
           </div>
 
           {/* Illustrative example of the applications view, built from the real components. */}
-          <figure className="app-surface overflow-hidden">
+          <figure className="app-hero-enter app-surface overflow-hidden" style={{ "--i": 1 } as CSSProperties}>
             <figcaption className="flex items-center justify-between border-b border-slate-200 px-5 py-3 text-sm">
               <span className="font-semibold text-slate-900">Applications</span>
               <span className="text-slate-500">Example</span>

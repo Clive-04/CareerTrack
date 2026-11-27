@@ -274,7 +274,7 @@ test("shows every application status faithfully", async ({ page }) => {
 
   // The mocked application is INTERVIEW; it must not be collapsed or renamed.
   const row = page.getByRole("article", { name: "Frontend Developer" });
-  await expect(row.locator(".app-chip")).toHaveText("Interview");
+  await expect(row.locator(".career-track-stop[data-state='current']")).toHaveAttribute("title", "Interview");
   const statusSelect = row.getByLabel(/Status for Frontend Developer/);
   await expect(statusSelect).toHaveValue("Interview");
   await expect(statusSelect.locator("option")).toHaveText([
@@ -299,6 +299,7 @@ test("keeps keyboard focus inside dialogs and menus", async ({ page }) => {
   await expect(jobDialog).toBeHidden();
   await expect(page.getByRole("button", { name: "Add job" })).toBeFocused();
 
+  await page.getByRole("button", { name: /Frontend Developer/ }).first().click();
   const menuButton = page.getByRole("button", { name: "More actions for Frontend Developer at Example Company" });
   await menuButton.focus();
   await page.keyboard.press("Enter");
@@ -317,7 +318,8 @@ test("signs in, loads dashboard data, and confirms logout", async ({ page }) => 
 
   await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
   await expect(page.getByText("Frontend Developer", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("88/100")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Next steps" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Where things stand" })).toBeVisible();
 
   await page.goto("/");
   await expect(page).toHaveURL(/\/dashboard$/);
@@ -341,8 +343,11 @@ test("signs in, loads dashboard data, and confirms logout", async ({ page }) => 
   await page.keyboard.press("Escape");
   await expect(jobDialog).toBeHidden();
 
-  await page.getByRole("button", { name: "Analyze again" }).click();
-  const analysisDialog = page.getByRole("dialog", { name: "AI Resume Analysis" });
+  const jobRow = page.getByRole("button", { name: /Frontend Developer/ }).first();
+  await expect(jobRow).toContainText("Resume match 88/100");
+  await jobRow.click();
+  await page.getByRole("button", { name: "Compare again" }).click();
+  const analysisDialog = page.getByRole("dialog", { name: "Resume match" });
   await expect(analysisDialog).toBeVisible();
   await analysisDialog.getByRole("button", { name: "Review text before sending" }).click();
   await expect(analysisDialog.getByRole("tab", { name: "Resume" })).toHaveAttribute("aria-selected", "true");
@@ -373,4 +378,23 @@ test("signs in, loads dashboard data, and confirms logout", async ({ page }) => 
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { name: /Organize your job search/ })).toBeVisible();
+});
+
+test("plays the route entrance once and respects reduced motion", async ({ page }) => {
+  await mockCareerTrackApi(page);
+  await signIn(page);
+
+  const entrance = page.locator("[data-entrance]");
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("careertrack:entered:/dashboard"))).toBe("1");
+  await followWorkspaceLink(page, "Jobs");
+  await followWorkspaceLink(page, "Overview");
+  await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
+  await expect(entrance).toHaveAttribute("data-entrance", "off");
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  const header = page.locator("header.app-enter").first();
+  await expect(header).toBeVisible();
+  const duration = await header.evaluate((element) => getComputedStyle(element).animationDuration);
+  expect(parseFloat(duration)).toBeLessThan(0.01);
 });
