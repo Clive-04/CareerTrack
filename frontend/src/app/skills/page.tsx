@@ -13,6 +13,9 @@ import {
 } from "@/components/SkillsProvider";
 import useDialogControls from "@/hooks/useDialogControls";
 import ExpandableText from "@/components/ExpandableText";
+import SharedFormField, { fieldProps, focusFirstInvalid } from "@/components/FormField";
+import { ListSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/ToastProvider";
 
 const categories: SkillCategory[] = ["Programming", "Frameworks", "Databases", "Tools", "Soft Skills", "Other"];
 const proficiencyLevels: Proficiency[] = ["Beginner", "Intermediate", "Advanced", "Expert"];
@@ -49,7 +52,9 @@ export default function SkillsPage() {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
   const [pageError, setPageError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<"name" | "years", string>>>({});
+  const toast = useToast();
+  const setNotice = (text: string) => toast(text);
   const [saving, setSaving] = useState(false);
   const [skillToDelete, setSkillToDelete] = useState<Skill | null>(null);
 
@@ -84,6 +89,7 @@ export default function SkillsPage() {
 
   function openAddModal() {
     setError("");
+    setFieldErrors({});
     setEditingId(null);
     setForm(emptyForm);
     setShowModal(true);
@@ -91,6 +97,7 @@ export default function SkillsPage() {
 
   function openEditModal(skill: Skill) {
     setError("");
+    setFieldErrors({});
     setEditingId(skill.id);
     setForm({
       name: skill.name,
@@ -105,16 +112,17 @@ export default function SkillsPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const name = form.name.trim();
-
-    if (!name) {
-      setError("Enter a skill name.");
-      return;
-    }
-
     // The database stores whole years, so fractional values are rejected rather than silently rounded.
     const years = Number(form.yearsExperience);
+    const errors: typeof fieldErrors = {};
+    if (!name) errors.name = "Enter a skill name, for example “TypeScript”.";
     if (!form.yearsExperience.trim() || !Number.isInteger(years) || years < 0 || years > 60) {
-      setError("Enter whole years of experience from 0 to 60.");
+      errors.years = "Enter whole years from 0 to 60.";
+    }
+    setFieldErrors(errors);
+    setError("");
+    if (Object.keys(errors).length > 0) {
+      focusFirstInvalid(event.currentTarget);
       return;
     }
 
@@ -162,17 +170,7 @@ export default function SkillsPage() {
           }
         />
 
-        {notice && (
-          <p role="status" className="app-notice-success justify-between">
-            {notice}
-            <button type="button" onClick={() => setNotice("")} aria-label="Dismiss message" className="app-icon-button-ghost -my-1 rounded p-1">
-              <X size={16} aria-hidden="true" />
-            </button>
-          </p>
-        )}
-        {isLoading && skills.length === 0 && (
-          <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading skills…</div>
-        )}
+        {isLoading && skills.length === 0 && <ListSkeleton rows={4} label="Loading skills" />}
         {skillsError && <p role="alert" className="app-notice-error">{skillsError}</p>}
         {pageError && <p role="alert" className="app-notice-error">{pageError}</p>}
 
@@ -277,17 +275,16 @@ export default function SkillsPage() {
             </div>
 
             <form noValidate onSubmit={handleSubmit} className="space-y-5 p-6">
-              <FormField label="Skill" required>
+              <SharedFormField id="skill-name" label="Skill" required error={fieldErrors.name}>
                 <input
-                  required
+                  {...fieldProps("skill-name", fieldErrors.name)}
                   data-autofocus
                   value={form.name}
                   onChange={(event) => setForm({ ...form, name: event.target.value })}
-                  aria-invalid={error !== "" && !form.name.trim()}
                   placeholder="TypeScript"
                   className="form-input"
                 />
-              </FormField>
+              </SharedFormField>
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Category">
@@ -302,9 +299,9 @@ export default function SkillsPage() {
                 </FormField>
               </div>
 
-              <FormField label="Years of experience" required>
+              <SharedFormField id="skill-years" label="Years of experience" required error={fieldErrors.years}>
                 <input
-                  required
+                  {...fieldProps("skill-years", fieldErrors.years)}
                   type="number"
                   inputMode="numeric"
                   min="0"
@@ -312,10 +309,9 @@ export default function SkillsPage() {
                   step="1"
                   value={form.yearsExperience}
                   onChange={(event) => setForm({ ...form, yearsExperience: event.target.value })}
-                  aria-invalid={error.startsWith("Enter whole years")}
                   className="form-input sm:w-32"
                 />
-              </FormField>
+              </SharedFormField>
 
               <FormField label="Notes">
                 <textarea

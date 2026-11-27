@@ -23,7 +23,12 @@ export function descriptionParagraphs(description: string) {
 
   const explicitBlocks = withSections
     .split(/\n{2,}/gu)
-    .flatMap((block) => block.split(/\n(?=(?:[•▪◦]|[-*])\s+)/gu))
+    .flatMap((block) => block.split(/\n(?=(?:[•▪◦]|[-*])\s+|#{1,3}\s)/gu))
+    // A Markdown heading ends at its line break, even without a blank line after it.
+    .flatMap((block) => {
+      const heading = block.match(/^(#{1,3}\s[^\n]+)\n([\s\S]+)$/u);
+      return heading ? [heading[1], heading[2]] : [block];
+    })
     .map((block) => block.trim())
     .filter(Boolean);
 
@@ -65,26 +70,33 @@ function formattedInlineText(text: string) {
     });
 }
 
-export default function JobDescription({ description }: { description: string }) {
+export default function JobDescription({
+  description,
+  collapsible = true,
+  headingLevel = 3,
+}: {
+  description: string;
+  collapsible?: boolean;
+  headingLevel?: 3 | 4;
+}) {
   const [expanded, setExpanded] = useState(false);
-  const isLong = description.trim().length > COLLAPSED_CHARACTERS;
+  const isLong = collapsible && description.trim().length > COLLAPSED_CHARACTERS;
+  const Heading = headingLevel === 3 ? "h3" : "h4";
   const visibleText = expanded || !isLong
     ? description
     : excerptAtWord(description, COLLAPSED_CHARACTERS);
   const blocks = descriptionParagraphs(visibleText);
 
   return (
-    <div className="border-l-2 border-slate-200 pl-4">
-      <p className="sr-only">Job description</p>
-
-      <div className="space-y-3 text-[0.9375rem] leading-7 text-slate-600">
+    <div>
+      <div className="max-w-[68ch] space-y-3 text-[0.9375rem] leading-7 text-slate-700">
         {blocks.map((block, index) => {
           const markdownHeading = block.match(/^#{1,3}\s+([\s\S]+)$/u);
           if (markdownHeading) {
             return (
-              <h3 key={`${index}-${block.slice(0, 20)}`} className="pt-1 text-base font-bold text-slate-900">
+              <Heading key={`${index}-${block.slice(0, 20)}`} className="pt-2 text-base font-semibold text-slate-900">
                 {formattedInlineText(markdownHeading[1])}
-              </h3>
+              </Heading>
             );
           }
 
@@ -92,7 +104,7 @@ export default function JobDescription({ description }: { description: string })
           if (bullet) {
             return (
               <div key={`${index}-${block.slice(0, 20)}`} className="flex items-start gap-2.5">
-                <span aria-hidden="true" className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
+                <span aria-hidden="true" className="mt-[0.7rem] h-1 w-1 shrink-0 rounded-full bg-slate-500" />
                 <p>{formattedInlineText(bullet[1])}</p>
               </div>
             );
@@ -119,13 +131,9 @@ export default function JobDescription({ description }: { description: string })
           type="button"
           aria-expanded={expanded}
           onClick={() => setExpanded((current) => !current)}
-          className="app-expand-control group mt-4 text-sm"
+          className="app-expand-control mt-3 text-sm"
         >
-          {expanded ? (
-            <ChevronUp className="transition-transform duration-200 group-hover:-translate-y-0.5" size={16} />
-          ) : (
-            <ChevronDown className="transition-transform duration-200 group-hover:translate-y-0.5" size={16} />
-          )}
+          {expanded ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
           {expanded ? "Show less" : "See more"}
         </button>
       )}

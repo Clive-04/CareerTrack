@@ -92,6 +92,7 @@ export default function ActionMenu({
         ref={buttonRef}
         type="button"
         aria-label={label}
+        title={buttonContent ? undefined : "More actions"}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}

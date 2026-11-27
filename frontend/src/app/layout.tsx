@@ -1,26 +1,21 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, Source_Serif_4 } from "next/font/google";
+import { IBM_Plex_Sans } from "next/font/google";
 import ApplicationsProvider from "@/components/ApplicationsProvider";
 import JobsProvider from "@/components/JobsProvider";
 import InterviewsProvider from "@/components/InterviewsProvider";
 import ResumesProvider from "@/components/ResumesProvider";
 import SkillsProvider from "@/components/SkillsProvider";
 import AuthProvider from "@/components/AuthProvider";
+import ToastProvider from "@/components/ToastProvider";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
   variable: "--font-plex-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
-});
-
-// Serif is reserved for page titles, echoing a printed résumé.
-const sourceSerif = Source_Serif_4({
-  variable: "--font-source-serif",
-  subsets: ["latin"],
-  weight: ["600"],
-  display: "swap",
+  // System fallback keeps the app usable and stable before the font loads.
+  fallback: ["ui-sans-serif", "system-ui", "Segoe UI", "Arial"],
 });
 
 export const metadata: Metadata = {
@@ -40,20 +35,22 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${plexSans.variable} ${sourceSerif.variable} h-full antialiased`}
+      className={`${plexSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AuthProvider>
-          <JobsProvider>
-            <ResumesProvider>
-              <ApplicationsProvider>
-                <InterviewsProvider>
-                  <SkillsProvider>{children}</SkillsProvider>
-                </InterviewsProvider>
-              </ApplicationsProvider>
-            </ResumesProvider>
-          </JobsProvider>
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <JobsProvider>
+              <ResumesProvider>
+                <ApplicationsProvider>
+                  <InterviewsProvider>
+                    <SkillsProvider>{children}</SkillsProvider>
+                  </InterviewsProvider>
+                </ApplicationsProvider>
+              </ResumesProvider>
+            </JobsProvider>
+          </AuthProvider>
+        </ToastProvider>
       </body>
     </html>
   );

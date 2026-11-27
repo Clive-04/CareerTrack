@@ -23,6 +23,10 @@ import useDialogControls from "@/hooks/useDialogControls";
 import ExpandableText from "@/components/ExpandableText";
 import ExpandableSkillList from "@/components/ExpandableSkillList";
 import ActionMenu from "@/components/ActionMenu";
+import { focusFirstInvalid } from "@/components/FormField";
+import { ListSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/ToastProvider";
+import { useApplications } from "@/components/ApplicationsProvider";
 
 const emptyForm = {
   name: "",
@@ -54,7 +58,17 @@ export default function ResumesPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [notice, setNotice] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<"name" | "targetRole" | "file", string>>>({});
+  const toast = useToast();
+  const setNotice = (text: string) => toast(text);
+  const { applications } = useApplications();
+  const usageByResume = useMemo(() => {
+    const counts = new Map<string, number>();
+    applications.forEach((application) => {
+      if (application.resumeId) counts.set(application.resumeId, (counts.get(application.resumeId) ?? 0) + 1);
+    });
+    return counts;
+  }, [applications]);
   const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null);
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [skillSearch, setSkillSearch] = useState("");
@@ -82,7 +96,7 @@ export default function ResumesPage() {
         roleFilter === "All" || resume.targetRole === roleFilter;
 
       return matchesSearch && matchesRole;
-    });
+    }).sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || b.updatedAt.localeCompare(a.updatedAt));
   }, [resumes, search, roleFilter]);
 
   const defaultResume = resumes.find((resume) => resume.isDefault);
@@ -92,12 +106,14 @@ export default function ResumesPage() {
     setForm(emptyForm);
     setSelectedFile(null);
     setMessage("");
+    setFieldErrors({});
     setSkillsOpen(false);
     setSkillSearch("");
     setShowModal(true);
   }
 
   function openEditModal(resume: Resume) {
+    setFieldErrors({});
     setEditingId(resume.id);
     setForm({
       name: resume.name,
@@ -117,21 +133,19 @@ export default function ResumesPage() {
     e.preventDefault();
     if (saving) return;
 
-    if (!form.name.trim() || !form.targetRole.trim()) {
-      setMessage(
-        "Resume name and target role are required and cannot contain only spaces.",
-      );
+    const errors: typeof fieldErrors = {};
+    if (!form.name.trim()) errors.name = "Name this version, for example “Frontend resume”.";
+    if (!form.targetRole.trim()) errors.targetRole = "Enter the kind of role this version targets.";
+    if (editingId === null && !selectedFile) errors.file = "Choose a PDF or DOCX file to upload.";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      focusFirstInvalid(e.currentTarget);
       return;
     }
 
     const fileName = selectedFile
       ? selectedFile.name
       : form.fileName.trim();
-
-    if (editingId === null && !selectedFile) {
-      setMessage("Please select a resume file before adding it.");
-      return;
-    }
 
     setSaving(true);
     setMessage("");
@@ -203,18 +217,8 @@ export default function ResumesPage() {
             </button>
           }
         />
-        {notice && (
-          <p role="status" className="app-notice-success justify-between">
-            {notice}
-            <button type="button" onClick={() => setNotice("")} aria-label="Dismiss message" className="app-icon-button-ghost -my-1 rounded p-1">
-              <X size={16} aria-hidden="true" />
-            </button>
-          </p>
-        )}
         {message && !showModal && <p role="alert" className="app-notice-error">{message}</p>}
-        {isLoading && resumes.length === 0 && (
-          <div role="status" className="app-loading-state"><span className="app-spinner" aria-hidden="true" />Loading resumes…</div>
-        )}
+        {isLoading && resumes.length === 0 && <ListSkeleton rows={2} label="Loading resumes" />}
         {resumesError && <p role="alert" className="app-notice-error">{resumesError}</p>}
 
         {!isLoading && resumes.length === 0 && !resumesError && (
@@ -285,6 +289,11 @@ export default function ResumesPage() {
                             <span className="truncate">{resume.fileName}{!resume.hasFile && " (no file uploaded)"}</span>
                           </span>
                           <span>Updated {formatDate(resume.updatedAt)}</span>
+                          <span>
+                            {usageByResume.get(resume.id)
+                              ? `Used in ${usageByResume.get(resume.id)} ${usageByResume.get(resume.id) === 1 ? "application" : "applications"}`
+                              : "Not used in an application yet"}
+                          </span>
                         </p>
 
                         {resume.hasFile && resume.extractionStatus !== "ready" && (
@@ -393,15 +402,17 @@ export default function ResumesPage() {
                   <input
                     id="resume-name"
                     data-autofocus
-                    aria-invalid={message !== "" && !form.name.trim()}
-                    required
+                    aria-invalid={fieldErrors.name ? true : undefined}
+                    aria-describedby={fieldErrors.name ? "resume-name-error" : undefined}
                     value={form.name}
-                    onChange={(e) =>
-                      setForm({ ...form, name: e.target.value })
-                    }
-                    placeholder="e.g. Software Developer Resume"
+                    onChange={(e) => {
+                      setForm({ ...form, name: e.target.value });
+                      if (fieldErrors.name && e.target.value.trim()) setFieldErrors({ ...fieldErrors, name: undefined });
+                    }}
+                    placeholder="Frontend resume"
                     className={inputClass}
                   />
+                  {fieldErrors.name && <p id="resume-name-error" className="app-field-error">{fieldErrors.name}</p>}
                 </div>
 
                 <div>
@@ -410,15 +421,17 @@ export default function ResumesPage() {
                   </label>
                   <input
                     id="resume-role"
-                    aria-invalid={message !== "" && !form.targetRole.trim()}
-                    required
+                    aria-invalid={fieldErrors.targetRole ? true : undefined}
+                    aria-describedby={fieldErrors.targetRole ? "resume-role-error" : undefined}
                     value={form.targetRole}
-                    onChange={(e) =>
-                      setForm({ ...form, targetRole: e.target.value })
-                    }
-                    placeholder="e.g. Frontend Developer"
+                    onChange={(e) => {
+                      setForm({ ...form, targetRole: e.target.value });
+                      if (fieldErrors.targetRole && e.target.value.trim()) setFieldErrors({ ...fieldErrors, targetRole: undefined });
+                    }}
+                    placeholder="Frontend Developer"
                     className={inputClass}
                   />
+                  {fieldErrors.targetRole && <p id="resume-role-error" className="app-field-error">{fieldErrors.targetRole}</p>}
                 </div>
 
                 <div className="sm:col-span-2">
@@ -444,29 +457,33 @@ export default function ResumesPage() {
                     <input
                       type="file"
                       aria-labelledby="resume-file-label"
-                      aria-describedby="resume-file-help"
+                      aria-describedby={fieldErrors.file ? "resume-file-error" : "resume-file-help"}
+                      aria-invalid={fieldErrors.file ? true : undefined}
                       accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       className="sr-only"
-                      required={editingId === null}
                       onChange={(e) => {
                         const file = e.target.files?.[0] ?? null;
 
                         if (file && (!/\.(pdf|docx)$/i.test(file.name) || file.size === 0 || file.size > 10 * 1024 * 1024)) {
-                          setMessage("Choose a non-empty PDF or DOCX file, 10 MB or smaller.");
+                          setFieldErrors({ ...fieldErrors, file: "Choose a PDF or DOCX file that isn’t empty and is 10 MB or smaller." });
                           e.target.value = "";
                           setSelectedFile(null);
                           return;
                         }
 
-                        setMessage("");
+                        setFieldErrors({ ...fieldErrors, file: undefined });
                         setSelectedFile(file);
                       }}
                     />
                   </label>
 
-                  <p id="resume-file-help" className="app-field-hint">
-                    PDF or DOCX, up to 10 MB, stored privately. Scanned documents can’t be read; use a text-based file.
-                  </p>
+                  {fieldErrors.file ? (
+                    <p id="resume-file-error" className="app-field-error">{fieldErrors.file}</p>
+                  ) : (
+                    <p id="resume-file-help" className="app-field-hint">
+                      PDF or DOCX, up to 10 MB, stored privately. Scanned documents can’t be read; use a text-based file.
+                    </p>
+                  )}
                 </div>
 
                 <div className="sm:col-span-2">
